@@ -1,0 +1,19 @@
+<assembly>
+	<id>generic</id>
+	<!-- Specifies that our binary distribution is a zip package -->
+	<formats>
+		<format>zip</format>
+		<format>tar.gz</format>
+	</formats>
+
+	<includeBaseDirectory>true</includeBaseDirectory>
+	<baseDirectory>.</baseDirectory>
+
+	<dependencySets>
+		<dependencySet>
+			<useProjectArtifact>true</useProjectArtifact>
+			<outputDirectory>extlib</outputDirectory>
+		</dependencySet>
+	</dependencySets>
+
+</assembly>

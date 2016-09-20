@@ -1,0 +1,13 @@
+.classpath
+.project
+.settings
+/.idea
+/logs
+*.iml
+*.ipr
+*.iws
+/target
+.svn
+__pycache__/
+.pydevproject
+dependency-reduced-pom.xml
