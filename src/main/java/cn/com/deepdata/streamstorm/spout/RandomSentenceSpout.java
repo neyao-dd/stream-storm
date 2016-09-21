@@ -40,7 +40,7 @@ public class RandomSentenceSpout extends BaseRichSpout {
 	}
 
 	public void nextTuple() {
-		Utils.sleep(100);
+		Utils.sleep(1000);
 		String[] sentences = new String[] { "the cow jumped over the moon",
 				"an apple a day keeps the doctor away",
 				"four score and seven years ago",

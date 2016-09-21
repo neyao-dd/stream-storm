@@ -1,0 +1,107 @@
+name: "es-stream"
+
+components:
+  - id: "stringScheme"
+    className: "org.apache.storm.kafka.StringScheme"
+
+  - id: "stringMultiScheme"
+    className: "org.apache.storm.spout.SchemeAsMultiScheme"
+    constructorArgs:
+      - ref: "stringScheme" # component with id "stringScheme" must be declared above.
+
+  - id: "zkHosts"
+    className: "org.apache.storm.kafka.ZkHosts"
+    constructorArgs:
+      - "${kafka.zookeeper.hosts}"
+
+  - id: "spoutConfig"
+    className: "org.apache.storm.kafka.SpoutConfig"
+    constructorArgs:
+      # brokerHosts
+      - ref: "zkHosts"
+      # topic
+      - "flume-event-topic"
+      # zkRoot
+      - "/flume-event-topic"
+      # id
+      - "e789ec38-6e44-45eb-8d0e-5b31af41fc3c"
+    properties:
+      # - name: "ignoreZkOffsets"
+      #   value: true
+      - name: "scheme"
+        ref: "stringMultiScheme"
+
+  - id: "esConf"
+    className: "java.util.HashMap"
+    configMethods:
+      - name: "put"
+        args:
+          - "es.batch.size.bytes"
+          - "20mb"
+      - name: "put"
+        args:
+          - "es.storm.bolt.flush.entries.size"
+          - "50"
+          
+config:
+  topology.workers: 8
+
+# spout definitions
+spouts:
+  - id: "kafka"
+    className: "org.apache.storm.kafka.KafkaSpout"
+    constructorArgs:
+      - ref: "spoutConfig"
+    parallelism: 8
+
+# bolt definitions
+bolts:
+  - id: "parser"
+    className: "cn.com.deepdata.streamstorm.bolt.ParserBolt"
+    parallelism: 4
+
+  - id: "doc"
+    className: "cn.com.deepdata.streamstorm.bolt.CreatESDocBolt"
+    parallelism: 4
+
+  - id: "es-bolt-month"
+    className: "cn.com.deepdata.streamstorm.bolt.EsBolt"
+    constructorArgs:
+      - "storm-test2/flumetype"
+      - ref: "esConf"
+      - true
+    parallelism: 1
+
+  - id: "es-bolt"
+    className: "cn.com.deepdata.streamstorm.bolt.EsBolt"
+    constructorArgs:
+      - "storm-test1/flumetype"
+      - ref: "esConf"
+      - false
+    parallelism: 1
+
+#stream definitions
+streams:
+  - name: "kafka --> parser"
+    from: "kafka"
+    to: "parser"
+    grouping:
+      type: SHUFFLE
+
+  - name: "parser --> doc"
+    from: "parser"
+    to: "doc"
+    grouping:
+      type: SHUFFLE
+
+  - name: "doc --> es-bolt-month"
+    from: "doc"
+    to: "es-bolt-month"
+    grouping:
+      type: SHUFFLE
+
+  - name: "es-bolt-month --> es-bolt"
+    from: "es-bolt-month"
+    to: "es-bolt"
+    grouping:
+      type: SHUFFLE

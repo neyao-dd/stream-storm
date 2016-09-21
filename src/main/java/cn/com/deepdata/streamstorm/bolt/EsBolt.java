@@ -28,6 +28,7 @@ import org.elasticsearch.storm.serialization.StormTupleFieldExtractor;
 import org.elasticsearch.storm.serialization.StormValueWriter;
 
 import com.google.common.collect.Maps;
+import com.google.gson.Gson;
 
 import cn.com.deepdata.esstorm.BulkResponse;
 import cn.com.deepdata.esstorm.PartitionWriter;
@@ -113,11 +114,13 @@ public class EsBolt implements IRichBolt {
 	private void flush() {
 		BitSet flush = null;
 		Map<Integer, Map<String, String>> esIdMapping = Maps.newHashMap();
+		Map<Integer, String> unrecoverableError = Maps.newHashMap();
 
 		try {
 			BulkResponse response = writer.repository.tryFlush();
 			flush = response.getLeftovers();
 			esIdMapping = response.getEsIdMapping();
+			unrecoverableError = response.getUnrecoverableError();
 		} catch (EsHadoopException ex) {
 			// fail all recorded tuples
 			for (Tuple input : inflightTuples) {
@@ -131,13 +134,18 @@ public class EsBolt implements IRichBolt {
 			Tuple tuple = inflightTuples.get(index);
 			// bit set means the entry hasn't been removed and thus wasn't
 			// written to ES
-			if (flush.get(index) || !esIdMapping.containsKey(index)) {
+			if (flush.get(index) || !esIdMapping.containsKey(index)
+					|| unrecoverableError.containsKey(index)) {
+				if (unrecoverableError.containsKey(index)) {
+					log.error(String.format("index error. doc:%s",
+							new Gson().toJson(tuple.getValue(0))));
+				}
 				collector.fail(tuple);
 			} else {
 				if (emitTuples) {
 					Map<String, String> info = esIdMapping.get(index);
 					Map<String, Object> doc = (Map<String, Object>) tuple
-							.getValueByField("source");
+							.getValue(0);
 					doc.put("snc_month_index", info.get("_index"));
 					doc.put("snc_month_id", info.get("_id"));
 					collector.emit(tuple, new Values(doc));

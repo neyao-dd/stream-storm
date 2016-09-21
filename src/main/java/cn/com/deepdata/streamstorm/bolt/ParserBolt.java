@@ -43,9 +43,7 @@ public class ParserBolt extends BaseRichBolt {
 	private Object parseValue(String key, String value)
 			throws JsonSyntaxException {
 		Gson gson = new Gson();
-		if (key.equals("action")) {
-			return value;
-		} else if (key.startsWith("n")) {
+		if (key.startsWith("n")) {
 			Map[] arrayValue = null;
 			arrayValue = gson.fromJson(value, Map[].class);
 			return Arrays.asList(arrayValue);
@@ -73,6 +71,13 @@ public class ParserBolt extends BaseRichBolt {
 			if (doc == null) {
 				throw new JsonParseException("parse return null");
 			}
+			if (!doc.containsKey("action")) {
+				log.error("docs need action. json:" + json);
+				_collector.ack(input);
+				return;
+			}
+			String action = doc.get("action");
+			doc.remove("action");
 			doc.keySet().stream().filter(k -> {
 				return !k.startsWith("_") && !removeKeys.contains(k);
 			}).forEach(k -> {
@@ -85,7 +90,7 @@ public class ParserBolt extends BaseRichBolt {
 					log.error(k + ":" + doc.get(k));
 				}
 			});
-			_collector.emit(new Values(doc));
+			_collector.emit(new Values(doc, action));
 		} catch (JsonParseException e) {
 			log.error("parse json error. json:" + json);
 			log.error("error", e);
@@ -96,7 +101,7 @@ public class ParserBolt extends BaseRichBolt {
 
 	public void declareOutputFields(OutputFieldsDeclarer declarer) {
 		// TODO Auto-generated method stub
-		declarer.declare(new Fields("doc"));
+		declarer.declare(new Fields("doc", "action"));
 	}
 
 }

@@ -40,7 +40,7 @@ public class ESTopology {
 
 		builder.setSpout("kafka", kafkaSpout, 8);
 		builder.setBolt("parser", new ParserBolt(), 4).shuffleGrouping("kafka");
-		builder.setBolt("doc", new CreatESDocBolt(), 3).shuffleGrouping(
+		builder.setBolt("doc", new CreatESDocBolt(), 4).shuffleGrouping(
 				"parser");
 
 		Map esConf = new HashMap();

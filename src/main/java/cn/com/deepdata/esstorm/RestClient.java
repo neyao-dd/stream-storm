@@ -160,6 +160,7 @@ public class RestClient implements Closeable, StatsAware {
 		BulkResponse processedResponse;
 
 		Map<Integer, Map<String, String>> esIdMapping = Maps.newHashMap();
+		Map<Integer, String> unrecoverableError = Maps.newHashMap();
 		boolean isRetry = false;
 
 		do {
@@ -184,10 +185,13 @@ public class RestClient implements Closeable, StatsAware {
 
 			processedResponse = processBulkResponse(response, data);
 			esIdMapping.putAll(processedResponse.getEsIdMapping());
+			unrecoverableError
+					.putAll(processedResponse.getUnrecoverableError());
 		} while (data.length() > 0
 				&& retry.retry(processedResponse.getHttpStatus()));
 
 		processedResponse.setEsIdMapping(esIdMapping);
+		processedResponse.setUnrecoverableError(unrecoverableError);
 		return processedResponse;
 	}
 
@@ -209,6 +213,7 @@ public class RestClient implements Closeable, StatsAware {
 			}
 
 			Map<Integer, Map<String, String>> esIdMapping = Maps.newHashMap();
+			Map<Integer, String> unrecoverableError = Maps.newHashMap();
 			int docsSent = data.entries();
 			List<String> errorMessageSample = new ArrayList<String>(
 					MAX_BULK_ERROR_MESSAGES);
@@ -241,9 +246,13 @@ public class RestClient implements Closeable, StatsAware {
 								"[%s] returned %s(%s) - %s", response.uri(),
 								HttpStatus.getText(status), status,
 								prettify(error)) : prettify(error));
-						throw new EsHadoopInvalidRequest(String.format(
-								"Found unrecoverable error %s; Bailing out..",
-								message));
+						unrecoverableError.put(
+								data.initialPosition(entryToDeletePosition),
+								message);
+						data.remove(entryToDeletePosition);
+						// throw new EsHadoopInvalidRequest(String.format(
+						// "Found unrecoverable error %s; Bailing out..",
+						// message));
 					}
 				} else {
 					esIdMapping
@@ -260,6 +269,7 @@ public class RestClient implements Closeable, StatsAware {
 			BulkResponse bulkResponse = new BulkResponse(httpStatusToReport,
 					docsSent, data.leftoversPosition(), errorMessageSample);
 			bulkResponse.setEsIdMapping(esIdMapping);
+			bulkResponse.setUnrecoverableError(unrecoverableError);
 			return bulkResponse;
 			// catch IO/parsing exceptions
 		} catch (IOException ex) {

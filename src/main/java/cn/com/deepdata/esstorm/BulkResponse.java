@@ -17,6 +17,7 @@ public class BulkResponse {
 	private final BitSet leftovers;
 	private final List<String> errorExamples;
 	private Map<Integer, Map<String, String>> esIdMapping;
+	private Map<Integer, String> unrecoverableError;
 
 	/**
 	 * Creates a bulk response denoting that everything is OK
@@ -58,5 +59,13 @@ public class BulkResponse {
 
 	public void setEsIdMapping(Map<Integer, Map<String, String>> esIdMapping) {
 		this.esIdMapping = esIdMapping;
+	}
+
+	public Map<Integer, String> getUnrecoverableError() {
+		return unrecoverableError;
+	}
+
+	public void setUnrecoverableError(Map<Integer, String> unrecoverableError) {
+		this.unrecoverableError = unrecoverableError;
 	}
 }

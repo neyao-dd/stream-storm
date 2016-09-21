@@ -90,7 +90,8 @@ public class CreatESDocBolt extends BaseRichBolt {
 			doc.put("lnc_forward_count", value);
 		}
 
-		_collector.emit(input, new Values(doc));
+		// _collector.emit(input, new Values(doc));
+		_collector.emit(new Values(doc));
 		_collector.ack(input);
 	}
 
