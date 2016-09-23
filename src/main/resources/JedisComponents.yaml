@@ -1,0 +1,30 @@
+name: "jedis-components"
+
+components:
+  - id: "analyzerJedisConf"
+    className: "org.apache.storm.redis.common.config.JedisPoolConfig"
+    constructorArgs:
+      # host
+      - "${analyzer.redis.host}"
+      # port
+      - ${analyzer.redis.port}
+      # timeout
+      - 2000
+      # password
+      - "${analyzer.redis.password}"
+      # database
+      - ${analyzer.redis.database}
+        
+  - id: "duplicateJedisConf"
+    className: "org.apache.storm.redis.common.config.JedisPoolConfig"
+    constructorArgs:
+      # host
+      - "${duplicate.redis.host}"
+      # port
+      - ${duplicate.redis.port}
+      # timeout
+      - 2000
+      # password
+      - ""
+      # database
+      - ${duplicate.redis.database}

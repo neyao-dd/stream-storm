@@ -12,6 +12,9 @@ import org.apache.storm.shade.com.google.common.collect.Maps;
 import org.elasticsearch.hadoop.serialization.builder.JdkValueWriter;
 import org.elasticsearch.storm.cfg.StormSettings;
 
+import com.google.common.collect.Lists;
+import com.google.gson.Gson;
+
 import cn.com.deepdata.esstorm.BulkResponse;
 import cn.com.deepdata.esstorm.PartitionWriter;
 
@@ -35,15 +38,14 @@ public class IndexTest {
 
 		Map<String, Object> doc = Maps.newHashMap();
 		doc.put("scc_index", "storm-test");
-		doc.put("scc_content", "abc");
+		doc.put("scc_content", "nnp");
+		doc.put("nnp_abnormal_items", Lists.newArrayList());
 		doc.put("tfc_time", format.format(System.currentTimeMillis()));
+		System.out.println(new Gson().toJson(doc));
 		writer.repository.writeToIndex(doc);
-		// doc.put("scc_content", "bcd");
-		// doc.put("tfc_time", format.format(System.currentTimeMillis()));
-		// writer.repository.writeToIndex(doc);
 		BulkResponse res = writer.repository.tryFlush();
 		Map<Integer, Map<String, String>> esIdMapping = res.getEsIdMapping();
-		System.out.println(esIdMapping.containsKey(0));
+		System.out.println(esIdMapping.get(0));
 
 		// Type mapType = new TypeToken<Map<String, Object>>() {
 		// }.getType();

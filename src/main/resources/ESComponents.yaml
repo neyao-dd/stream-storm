@@ -1,0 +1,26 @@
+name: "es-components"
+
+components:
+  - id: "esSaverConf"
+    className: "java.util.HashMap"
+    configMethods:
+      - name: "put"
+        args:
+          - "es.batch.size.bytes"
+          - "20mb"
+      - name: "put"
+        args:
+          - "es.storm.bolt.flush.entries.size"
+          - "50"
+          
+  - id: "esReaderConf"
+    className: "java.util.HashMap"
+    configMethods:
+      - name: "put"
+        args:
+          - "es.port"
+          - "19200"
+      - name: "put"
+        args:
+          - "es.mapping.date.rich"
+          - "false"

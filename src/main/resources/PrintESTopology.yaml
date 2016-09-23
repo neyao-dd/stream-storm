@@ -1,0 +1,43 @@
+name: "print-es"
+
+includes:
+  - resource: false
+    file: "conf/ESComponents.yaml"
+    override: false
+  - resource: false
+    file: "conf/JedisComponents.yaml"
+    override: false
+  
+config:
+  topology.workers: 1
+
+# spout definitions
+spouts:
+  - id: "es-spout"
+    className: "org.elasticsearch.storm.EsSpout"
+    constructorArgs:
+      - "storm-test1/flumetype"
+      - "?q=*"
+      - ref: "esReaderConf"
+    parallelism: 1
+
+# bolt definitions
+bolts:
+  - id: "printer"
+    className: "cn.com.deepdata.streamstorm.bolt.PrinterBolt"
+    parallelism: 1
+    
+  - id: "cut-words"
+    className: "cn.com.deepdata.streamstorm.bolt.CutWordsBolt"
+    constructorArgs:
+      - ref: "analyzerJedisConf"
+    parallelism: 1
+
+#stream definitions
+streams:
+  - name: "es --> cut"
+    from: "es-spout"
+    to: "cut-words"
+    grouping:
+      type: SHUFFLE
+

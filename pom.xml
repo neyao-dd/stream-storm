@@ -23,23 +23,16 @@
 			<id>central</id>
 			<name>central</name>
 			<url>http://central.maven.org/maven2/</url>
-			<releases>
-				<enabled>true</enabled>
-			</releases>
-			<snapshots>
-				<enabled>true</enabled>
-			</snapshots>
 		</repository>
-		<repository>
+		<!--  <repository>
 			<id>nexus-osc</id>
 			<name>Nexus osc</name>
 			<url>http://maven.oschina.net/content/groups/public/</url>
-			<releases>
-				<enabled>true</enabled>
-			</releases>
-			<snapshots>
-				<enabled>true</enabled>
-			</snapshots>
+		</repository>-->
+		<repository>
+			<id>daocloud-lbp0200</id>
+			<name>daocloud-lbp0200</name>
+			<url>http://lbp0200-maven.daoapp.io/maven2</url>
 		</repository>
 	</repositories>
 
@@ -84,7 +77,6 @@
 			<scope>provided</scope>
 		</dependency>
 
-
 		<!-- https://mvnrepository.com/artifact/org.apache.kafka/kafka_2.11 -->
 		<dependency>
 			<groupId>org.apache.kafka</groupId>
@@ -122,6 +114,22 @@
 			<groupId>org.apache.storm</groupId>
 			<artifactId>flux-wrappers</artifactId>
 			<version>${storm.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>cn.com.deepdata.commonutil</groupId>
+			<artifactId>CommonUtil</artifactId>
+			<version>3.0-SNAPSHOT</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.slf4j</groupId>
+					<artifactId>slf4j-log4j12</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>org.slf4j</groupId>
+					<artifactId>slf4j-api</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 
 	</dependencies>

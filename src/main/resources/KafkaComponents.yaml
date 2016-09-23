@@ -1,0 +1,33 @@
+name: "kafka-components"
+
+components:
+  - id: "stringScheme"
+    className: "org.apache.storm.kafka.StringScheme"
+
+  - id: "stringMultiScheme"
+    className: "org.apache.storm.spout.SchemeAsMultiScheme"
+    constructorArgs:
+      - ref: "stringScheme" # component with id "stringScheme" must be declared above.
+
+  - id: "zkHosts"
+    className: "org.apache.storm.kafka.ZkHosts"
+    constructorArgs:
+      - "${kafka.zookeeper.hosts}"
+
+  - id: "kafkaSpoutConfig"
+    className: "org.apache.storm.kafka.SpoutConfig"
+    constructorArgs:
+      # brokerHosts
+      - ref: "zkHosts"
+      # topic
+      - "${kafka.topic}"
+      # zkRoot
+      - "${kafka.zk.root}"
+      # id
+      - "e789ec38-6e44-45eb-8d0e-5b31af41fc3c"
+    properties:
+      # - name: "ignoreZkOffsets"
+      #   value: true
+      - name: "scheme"
+        ref: "stringMultiScheme"
+        
