@@ -141,7 +141,8 @@ public class ParserBolt extends BaseRichBolt {
 					log.error(k + ":" + doc.get(k));
 				}
 			});
-			helper.emit(input, addTime(newDoc), action, Maps.newHashMap(), true);
+			helper.emit(input, addTime(newDoc), action, Maps.newHashMap(),
+					false);
 		} catch (JsonParseException e) {
 			log.error("parse json error. json:" + json);
 			log.error("error", e);

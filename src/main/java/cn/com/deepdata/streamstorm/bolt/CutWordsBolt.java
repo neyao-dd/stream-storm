@@ -74,7 +74,6 @@ public class CutWordsBolt extends AbstractRedisBolt {
 		JedisCommands jedisCommands = null;
 		try {
 			jedisCommands = getInstance();
-			log.info("jedisCommands:" + jedisCommands);
 			clientWordsCtrl.load(jedisCommands);
 			riskWordsCtrl.load(jedisCommands);
 			indRegRiskWordsCtrl.load(jedisCommands);
@@ -146,6 +145,7 @@ public class CutWordsBolt extends AbstractRedisBolt {
 		attach.put("contentRaw", contentRaw);
 		attach.put("contentTermInfo", contentTermInfo);
 		helper.emitAttach(input, attach, true);
+		helper.ack(input);
 	}
 
 	@Override
