@@ -12,6 +12,14 @@ components:
         args:
           - "es.storm.bolt.flush.entries.size"
           - "50"
+      - name: "put"
+        args:
+          - "es.mapping.include"
+          - "doc"
+      - name: "put"
+        args:
+          - "es.mapping.exclude"
+          - "action,attach"
           
   - id: "esReaderConf"
     className: "java.util.HashMap"
