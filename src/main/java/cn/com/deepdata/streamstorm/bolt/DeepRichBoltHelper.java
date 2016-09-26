@@ -14,7 +14,7 @@ public class DeepRichBoltHelper {
 	// doc: elasticsearch document(Map<String, Object>)
 	// action: action type(String)
 	// attach: attach info(Map<String, Object>)
-	public static final String[] fields = { "doc", "action", "attach" };
+	public static final String[] fields = { "source", "action", "attach" };
 	protected OutputCollector _collector;
 
 	public DeepRichBoltHelper(OutputCollector collector) {

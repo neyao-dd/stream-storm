@@ -15,7 +15,7 @@ components:
       - name: "put"
         args:
           - "es.mapping.include"
-          - "doc"
+          - "source"
       - name: "put"
         args:
           - "es.mapping.exclude"
