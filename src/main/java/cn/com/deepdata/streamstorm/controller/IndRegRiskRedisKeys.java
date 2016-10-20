@@ -1,15 +1,18 @@
 package cn.com.deepdata.streamstorm.controller;
 
-public class IndRegRiskRedisKeys extends RedisKeys {
-	static public final String indRegRiskVersionsListKey = "IRRI_VL";
-	static public final String indRegRiskInfoVersionKey = "IRRI_V";
-	static public final String regRiskItemPrefixKey = "RRI_%v%_I_";
-	static public final String indRiskItemPrefixKey = "IRI_%v%_I_";
-	static public final String indRegRiskTokenItemPrefixKey = "IRRI_%v%_TI_";
-	static public final String indRegRiskTokenSetKey = "IRRI_%v%_TS";
+import cn.com.deepdata.streamstorm.entity.RiskFields;
 
-	public IndRegRiskRedisKeys() {
-		versionKey = indRegRiskInfoVersionKey;
-		tokensKey = indRegRiskTokenSetKey;
+public class IndRegRiskRedisKeys extends RedisKeys {
+	private IndRegRiskRedisKeys() {
+		versionKey = RiskFields.indRegRiskInfoVersionKey;
+		tokensKey = RiskFields.indRegRiskTokenSetKey;
+	}
+
+	private static class InnerInstance {
+		private static IndRegRiskRedisKeys instance = new IndRegRiskRedisKeys();
+	}
+
+	public static IndRegRiskRedisKeys getInstance() {
+		return InnerInstance.instance;
 	}
 }

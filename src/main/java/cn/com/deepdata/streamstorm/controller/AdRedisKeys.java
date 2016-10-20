@@ -1,12 +1,19 @@
 package cn.com.deepdata.streamstorm.controller;
 
+import cn.com.deepdata.streamstorm.entity.RiskFields;
+
 public class AdRedisKeys extends RedisKeys {
 
-	public static final String adVersionKey = "AD_V";
-	public static final String adTokenSetKey = "AD_%v%_TS";
+	private AdRedisKeys() {
+		versionKey = RiskFields.adVersionKey;
+		tokensKey = RiskFields.adTokenSetKey;
+	}
 
-	public AdRedisKeys() {
-		versionKey = adVersionKey;
-		tokensKey = adTokenSetKey;
+	private static class InnerInstance {
+		private static AdRedisKeys instance = new AdRedisKeys();
+	}
+
+	public static AdRedisKeys getInstance() {
+		return InnerInstance.instance;
 	}
 }

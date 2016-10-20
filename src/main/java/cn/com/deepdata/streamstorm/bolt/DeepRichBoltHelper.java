@@ -22,8 +22,12 @@ public class DeepRichBoltHelper {
 	}
 
 	public Map<String, Object> getDoc(Tuple input) {
-		if (!input.contains(fields[0]))
+		if (!input.contains(fields[0])) {
+			if (input.contains("doc")) {
+				return (Map<String, Object>) input.getValueByField("doc");
+			}
 			return Maps.newHashMap();
+		}
 		Map<String, Object> doc = (Map<String, Object>) input.getValue(0);
 		if (doc.containsKey("source")
 				&& Map.class.isInstance(doc.get("source")))
