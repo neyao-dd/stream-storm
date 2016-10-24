@@ -3,6 +3,8 @@ package cn.com.deepdata.streamstorm.bolt;
 import cn.com.deepdata.commonutil.TermFrequencyInfo;
 import cn.com.deepdata.streamstorm.controller.UsrDefineWordsController;
 import cn.com.deepdata.streamstorm.entity.*;
+import cn.com.deepdata.streamstorm.util.ClientUuidUtil;
+import cn.com.deepdata.streamstorm.util.RegionUtil;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import org.apache.storm.redis.bolt.AbstractRedisBolt;
@@ -43,6 +45,8 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
     double otherScore = 0.6;
     double otherScore2 = 0.15;
     private transient DeepRichBoltHelper helper;
+    private transient RegionUtil region;
+    private transient ClientUuidUtil idUtil;
 
     final double INVALID_WEIGHT = Double.MAX_VALUE;
     final String[] CT_CATE_CN = {"[品牌+]","[品牌-]", "[产品+]", "[产品-]", "[人名+]", "[人名-]", "[其它+]", "[其它-]"};
@@ -63,6 +67,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
         helper = new DeepRichBoltHelper(collector);
         try {
             calcType = "paragraph";
+            // TODO: 2016/10/24
             String configCalcType = getCalcType();
             if (configCalcType != null && configCalcType.length() > 0)
                 calcType = configCalcType;
@@ -80,6 +85,9 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
         } catch (Exception e) {
             logger.error(e.toString());
         }
+        // TODO: 2016/10/24 host
+        region = new RegionUtil("");
+        idUtil = new ClientUuidUtil("");
     }
 
     @Override
@@ -141,8 +149,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
                 double maxRiskScoreV2 = 0.;
                 ClientScore cs = new ClientScore();
                 cs.setIna_id(id);
-                if (existUuid())
-                    cs.setSnc_uuid(getUuid(id));
+                cs.setSnc_uuid(idUtil.getUuid(id));
                 cs.setDna_score(totalCliScore.get(id));
                 if (cs.getDna_score() >= 0.9) {
                     for (DescRiskScore drs : desRiskScore) {
@@ -219,8 +226,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
                     maxScore = Math.max(maxScore, score);
                 }
                 drs.setDna_score(Math.min(100., maxScore));
-                if (existUuid())
-                    drs.setSnc_uuid(getUuid(cid));
+                drs.setSnc_uuid(idUtil.getUuid(cid));
                 if (!rWeight.isEmpty() && rWeight.containsKey(rid))
                     drs.setDna_score_v2(Math.min(100., maxScore) * rWeight.get(rid));
                 desRiskScore.add(drs);

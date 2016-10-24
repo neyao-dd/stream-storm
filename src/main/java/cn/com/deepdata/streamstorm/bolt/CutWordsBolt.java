@@ -6,6 +6,7 @@ import cn.com.deepdata.streamstorm.controller.RedisKeys;
 import cn.com.deepdata.streamstorm.controller.UsrDefineWordsController;
 import cn.com.deepdata.streamstorm.entity.Region;
 import cn.com.deepdata.streamstorm.entity.RiskFields;
+import cn.com.deepdata.streamstorm.util.RegionUtil;
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 import org.apache.commons.logging.Log;
@@ -34,8 +35,6 @@ public class CutWordsBolt extends AbstractRedisBolt {
     private transient static UsrDefineWordsController riskWordsCtrl;
     private transient static UsrDefineWordsController indRegRiskWordsCtrl;
     private transient static UsrDefineWordsController adWordsCtrl;
-    private Map<String, Map<Integer, Integer>> regionAlias = new HashMap<>();
-    private Map<Integer, Region> regionDetail = new HashMap<>();
 
     public CutWordsBolt(JedisPoolConfig config) {
         super(config);
@@ -49,6 +48,8 @@ public class CutWordsBolt extends AbstractRedisBolt {
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector collector) {
         super.prepare(map, topologyContext, collector);
         helper = new DeepRichBoltHelper(collector);
+        RegionUtil region = new RegionUtil("");
+        Map<String, Map<Integer, Integer>> regionAlias = region.getRegionAlias();
         ansjAnalyzer = new AnsjTermAnalyzer();
         syncWordsLock = new byte[0];
         lastSyncTime = 0L;
@@ -61,98 +62,11 @@ public class CutWordsBolt extends AbstractRedisBolt {
         adWordsCtrl = new UsrDefineWordsController(
                 RedisKeys.CreateRedisKey(RedisKeys.Type.kAd), "gg");
         LoadWords();
-        if (existUuid()) {
-            long s = System.currentTimeMillis();
-            syncUuid();
-            logger.info("syncUuid() use time:" + (System.currentTimeMillis() - s));
+        Map<String, String> regionWord = new HashMap<>();
+        for (String name : regionAlias.keySet()) {
+            regionWord.put(name, "DS");
         }
-        if (isNewRegion()) {
-            if (regionAlias.isEmpty()) {
-                long s = System.currentTimeMillis();
-                syncNewRegion();
-                logger.info("loadNewRegion use time:" + (System.currentTimeMillis() - s));
-            }
-            Map<String, String> regionWord = new HashMap<>();
-            for (String name : regionAlias.keySet()) {
-                regionWord.put(name, "DS");
-            }
-            indRegRiskWordsCtrl.AddWords(regionWord);
-        }
-    }
-
-    public void syncNewRegion() {
-        try {
-            Gson gson = new Gson();
-            String response = getRequest(getRegionHost());
-            Map<String, Object> region = gson.fromJson(response, type_hos);
-            List<Map<String, Object>> areaList;
-            String[] areaType = {"AREA", "CITY", "PROVINCE"};
-            for (String at : areaType) {
-                areaList = (List<Map<String, Object>>) region.get(at);
-                for (Map<String, Object> areaInfo : areaList) {
-                    List<Map<String, Object>> alias = (ArrayList<Map<String, Object>>) areaInfo.get("alias");
-                    if (isValid(alias))
-                        continue;
-                    int id = Integer.parseInt(areaInfo.get("id").toString());
-                    String name = areaInfo.get("name").toString();
-                    int pid;
-                    try {
-                        pid = Integer.parseInt(areaInfo.get("parent_id").toString());
-                    } catch (NumberFormatException e) {
-                        pid = 0;
-                    }
-                    addRegionAlias(name, id, pid);
-                    for (Map<String, Object> map : alias) {
-                        String ali = map.get("alias").toString();
-                        addRegionAlias(ali, id, pid);
-                    }
-                    regionDetail.put(id, new Region(name, areaInfo.get("uuid").toString(), id, pid));
-                }
-            }
-        } catch (Exception e) {
-            logger.error("syncRegion error..." + getExceptionString(e));
-        }
-    }
-
-    public boolean isValid(List list) {
-        return list == null || list.isEmpty();
-    }
-
-    public void syncUuid() {
-        try {
-            Gson gson = new Gson();
-            int page = 0;
-            int currentPage;
-            do {
-                String result = getRequest(getUuidHost() + "page=" + page + "&size=" + getUuidPageSize());
-                Map<String, Object> resultMap = gson.fromJson(result, type_hos);
-                currentPage = (int) (double) resultMap.get("current_page_total");
-                List<Map<String, Object>> items = (List<Map<String, Object>>) resultMap.get("page_items");
-                for (Map<String, Object> map : items) {
-                    String uuid = map.get("uuid").toString();
-                    int id = (int) (double) map.get("id");
-                    String name = map.get("name").toString();
-                    uuidById.put(id, uuid);
-                    idByName.put(name, id);
-                }
-                page++;
-            } while (currentPage > 0);
-        } catch (Exception e) {
-            logger.error("syncUuid error..." + getExceptionString(e));
-        }
-    }
-
-    // TODO: 2016/10/24
-    private void addRegionAlias(String name, int id, int pid) {
-        Map<Integer, Integer> idMapping;
-        if (regionAlias.containsKey(name)) {
-            idMapping = regionAlias.get(name);
-            idMapping.put(id, pid);
-        } else {
-            idMapping = new HashMap<>();
-            idMapping.put(id, pid);
-            regionAlias.put(name, idMapping);
-        }
+        indRegRiskWordsCtrl.AddWords(regionWord);
     }
 
     private void LoadWords() {
@@ -172,7 +86,6 @@ public class CutWordsBolt extends AbstractRedisBolt {
             indRegRiskWordsCtrl.load(jedisCommands);
             adWordsCtrl.loadRedisWordsWithNoVersion(jedisCommands,
                     RiskFields.adTokenSetKey);
-
         } finally {
             if (jedisCommands != null) {
                 returnInstance(jedisCommands);

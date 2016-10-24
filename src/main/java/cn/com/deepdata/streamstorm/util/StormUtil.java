@@ -24,57 +24,62 @@ public class StormUtil {
 
     private transient static Logger logger = LoggerFactory.getLogger(StormUtil.class);
 
-    public static final Type type = new TypeToken<Map<String, Object>>(){}.getType();
-    public static final Type type_ss = new TypeToken<Set<String>>() {}.getType();
-    public static final Type type_hss = new TypeToken<Map<String, String>>() {}.getType();
-    public static final Type type_hos = new TypeToken<Map<String, Object>>() {}.getType();
-    public static final Type type_ls = new TypeToken<List<String>>() {}.getType();
+    public static final Type type = new TypeToken<Map<String, Object>>() {
+    }.getType();
+    public static final Type type_ss = new TypeToken<Set<String>>() {
+    }.getType();
+    public static final Type type_hss = new TypeToken<Map<String, String>>() {
+    }.getType();
+    public static final Type type_hos = new TypeToken<Map<String, Object>>() {
+    }.getType();
+    public static final Type type_ls = new TypeToken<List<String>>() {
+    }.getType();
     private static Client client = Client.create();
-    private static String radarServerHost;
-    private static String radarHost;
-    private static String urlDupRedisHost;
-    private static String urlDupRedisPort;
-    // 排重方式
-    private static String deduplication;
-    private static boolean existUuid;
-    private static String uuidHost;
-    private static int uuidPageSize;
-    // 计算方式
-    private static String calcType;
-    private static String regionHost;
-    private static String redisHost;
-    private static int redisPort;
-    private static boolean newRegion;
-    public static Gson gson = new Gson();
+//    private static String radarServerHost;
+//    private static String radarHost;
+//    private static String urlDupRedisHost;
+//    private static String urlDupRedisPort;
+//    // 排重方式
+//    private static String deduplication;
+//    private static boolean existUuid;
+//    private static String uuidHost;
+//    private static int uuidPageSize;
+//    // 计算方式
+//    private static String calcType;
+//    private static String regionHost;
+//    private static String redisHost;
+//    private static int redisPort;
+//    private static boolean newRegion;
+//    public static Gson gson = new Gson();
 
-    static {
-        try {
-            PropertiesConfiguration config = new PropertiesConfiguration(getRuntimeJarOuterPath() + "conf/flume.properties");
-            radarServerHost = config.getString("radarServerHost");
-            radarHost = config.getString("radarHost");
-            urlDupRedisHost = config.getString("urlDupRedisHost");
-            urlDupRedisPort = config.getString("urlDupRedisPort");
-            deduplication = config.getString("deduplication");
-            existUuid = config.getBoolean("existUuid");
-            uuidHost = config.getString("uuidHost");
-            uuidPageSize = config.getInt("uuidPageSize");
-            //TODO enum
-            calcType = config.getString("calcType");
-            newRegion = config.getBoolean("isNewRegion");
-            regionHost = config.getString("regionHost");
-            redisHost = config.getString("redisHost");
-            redisPort = config.getInt("redisPort");
-        } catch (ConfigurationException e) {
-            e.printStackTrace();
-        }
-    }
+//    static {
+//        try {
+//            PropertiesConfiguration config = new PropertiesConfiguration(getRuntimeJarOuterPath() + "conf/flume.properties");
+//            radarServerHost = config.getString("radarServerHost");
+//            radarHost = config.getString("radarHost");
+//            urlDupRedisHost = config.getString("urlDupRedisHost");
+//            urlDupRedisPort = config.getString("urlDupRedisPort");
+//            deduplication = config.getString("deduplication");
+//            existUuid = config.getBoolean("existUuid");
+//            uuidHost = config.getString("uuidHost");
+//            uuidPageSize = config.getInt("uuidPageSize");
+//            //TODO enum
+//            calcType = config.getString("calcType");
+//            newRegion = config.getBoolean("isNewRegion");
+//            regionHost = config.getString("regionHost");
+//            redisHost = config.getString("redisHost");
+//            redisPort = config.getInt("redisPort");
+//        } catch (ConfigurationException e) {
+//            e.printStackTrace();
+//        }
+//    }
 
-    public static String getRuntimeJarOuterPath() {
-        String path = StormUtil.class.getProtectionDomain().getCodeSource().getLocation().getPath();
-        if (path.endsWith(".jar"))
-            path = path.substring(0, path.lastIndexOf("/"));
-        return path.substring(0, path.lastIndexOf("/") + 1);
-    }
+//    public static String getRuntimeJarOuterPath() {
+//        String path = StormUtil.class.getProtectionDomain().getCodeSource().getLocation().getPath();
+//        if (path.endsWith(".jar"))
+//            path = path.substring(0, path.lastIndexOf("/"));
+//        return path.substring(0, path.lastIndexOf("/") + 1);
+//    }
 
     public static String getExceptionString(Exception e) {
         StringWriter sw = new StringWriter();
@@ -84,8 +89,9 @@ public class StormUtil {
         return sw.getBuffer().toString();
     }
 
-     /**
+    /**
      * rest get request
+     *
      * @param host
      */
     public static String getRequest(String host) {
@@ -95,57 +101,5 @@ public class StormUtil {
             throw new RuntimeException("Failed : HTTP error code : " + response.getStatus());
         }
         return response.getEntity(String.class);
-    }
-
-    public static boolean isNewRegion() {
-        return newRegion;
-    }
-
-    public static boolean existUuid() {
-        return existUuid;
-    }
-
-    public static int getRedisPort() {
-        return redisPort;
-    }
-
-    public static String getRadarServerHost() {
-        return radarServerHost;
-    }
-
-    public static String getRadarHost() {
-        return radarHost;
-    }
-
-    public static String getUrlDupRedisHost() {
-        return urlDupRedisHost;
-    }
-
-    public static String getUrlDupRedisPort() {
-        return urlDupRedisPort;
-    }
-
-    public static String getDeduplication() {
-        return deduplication;
-    }
-
-    public static String getUuidHost() {
-        return uuidHost;
-    }
-
-    public static int getUuidPageSize() {
-        return uuidPageSize;
-    }
-
-    public static String getCalcType() {
-        return calcType;
-    }
-
-    public static String getRegionHost() {
-        return regionHost;
-    }
-
-    public static String getRedisHost() {
-        return redisHost;
     }
 }
