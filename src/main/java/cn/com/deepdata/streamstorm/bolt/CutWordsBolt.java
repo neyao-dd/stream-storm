@@ -4,8 +4,8 @@ import cn.com.deepdata.commonutil.AnsjTermAnalyzer;
 import cn.com.deepdata.commonutil.TermFrequencyInfo;
 import cn.com.deepdata.streamstorm.controller.RedisKeys;
 import cn.com.deepdata.streamstorm.controller.UsrDefineWordsController;
+import cn.com.deepdata.streamstorm.entity.Region;
 import cn.com.deepdata.streamstorm.entity.RiskFields;
-import cn.com.deepdata.streamstorm.util.StormUtil;
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 import org.apache.commons.logging.Log;
@@ -20,14 +20,12 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import redis.clients.jedis.JedisCommands;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import static cn.com.deepdata.streamstorm.util.StormUtil.*;
 
 @SuppressWarnings({"serial", "rawtypes"})
 public class CutWordsBolt extends AbstractRedisBolt {
-    private transient static Log log = LogFactory.getLog(CutWordsBolt.class);
+    private transient static Log logger = LogFactory.getLog(CutWordsBolt.class);
     private transient DeepRichBoltHelper helper;
     private transient static AnsjTermAnalyzer ansjAnalyzer;
     private transient static byte[] syncWordsLock;
@@ -36,6 +34,8 @@ public class CutWordsBolt extends AbstractRedisBolt {
     private transient static UsrDefineWordsController riskWordsCtrl;
     private transient static UsrDefineWordsController indRegRiskWordsCtrl;
     private transient static UsrDefineWordsController adWordsCtrl;
+    private Map<String, Map<Integer, Integer>> regionAlias = new HashMap<>();
+    private Map<Integer, Region> regionDetail = new HashMap<>();
 
     public CutWordsBolt(JedisPoolConfig config) {
         super(config);
@@ -46,8 +46,7 @@ public class CutWordsBolt extends AbstractRedisBolt {
     }
 
     @Override
-    public void prepare(Map map, TopologyContext topologyContext,
-                        OutputCollector collector) {
+    public void prepare(Map map, TopologyContext topologyContext, OutputCollector collector) {
         super.prepare(map, topologyContext, collector);
         helper = new DeepRichBoltHelper(collector);
         ansjAnalyzer = new AnsjTermAnalyzer();
@@ -62,6 +61,98 @@ public class CutWordsBolt extends AbstractRedisBolt {
         adWordsCtrl = new UsrDefineWordsController(
                 RedisKeys.CreateRedisKey(RedisKeys.Type.kAd), "gg");
         LoadWords();
+        if (existUuid()) {
+            long s = System.currentTimeMillis();
+            syncUuid();
+            logger.info("syncUuid() use time:" + (System.currentTimeMillis() - s));
+        }
+        if (isNewRegion()) {
+            if (regionAlias.isEmpty()) {
+                long s = System.currentTimeMillis();
+                syncNewRegion();
+                logger.info("loadNewRegion use time:" + (System.currentTimeMillis() - s));
+            }
+            Map<String, String> regionWord = new HashMap<>();
+            for (String name : regionAlias.keySet()) {
+                regionWord.put(name, "DS");
+            }
+            indRegRiskWordsCtrl.AddWords(regionWord);
+        }
+    }
+
+    public void syncNewRegion() {
+        try {
+            Gson gson = new Gson();
+            String response = getRequest(getRegionHost());
+            Map<String, Object> region = gson.fromJson(response, type_hos);
+            List<Map<String, Object>> areaList;
+            String[] areaType = {"AREA", "CITY", "PROVINCE"};
+            for (String at : areaType) {
+                areaList = (List<Map<String, Object>>) region.get(at);
+                for (Map<String, Object> areaInfo : areaList) {
+                    List<Map<String, Object>> alias = (ArrayList<Map<String, Object>>) areaInfo.get("alias");
+                    if (isValid(alias))
+                        continue;
+                    int id = Integer.parseInt(areaInfo.get("id").toString());
+                    String name = areaInfo.get("name").toString();
+                    int pid;
+                    try {
+                        pid = Integer.parseInt(areaInfo.get("parent_id").toString());
+                    } catch (NumberFormatException e) {
+                        pid = 0;
+                    }
+                    addRegionAlias(name, id, pid);
+                    for (Map<String, Object> map : alias) {
+                        String ali = map.get("alias").toString();
+                        addRegionAlias(ali, id, pid);
+                    }
+                    regionDetail.put(id, new Region(name, areaInfo.get("uuid").toString(), id, pid));
+                }
+            }
+        } catch (Exception e) {
+            logger.error("syncRegion error..." + getExceptionString(e));
+        }
+    }
+
+    public boolean isValid(List list) {
+        return list == null || list.isEmpty();
+    }
+
+    public void syncUuid() {
+        try {
+            Gson gson = new Gson();
+            int page = 0;
+            int currentPage;
+            do {
+                String result = getRequest(getUuidHost() + "page=" + page + "&size=" + getUuidPageSize());
+                Map<String, Object> resultMap = gson.fromJson(result, type_hos);
+                currentPage = (int) (double) resultMap.get("current_page_total");
+                List<Map<String, Object>> items = (List<Map<String, Object>>) resultMap.get("page_items");
+                for (Map<String, Object> map : items) {
+                    String uuid = map.get("uuid").toString();
+                    int id = (int) (double) map.get("id");
+                    String name = map.get("name").toString();
+                    uuidById.put(id, uuid);
+                    idByName.put(name, id);
+                }
+                page++;
+            } while (currentPage > 0);
+        } catch (Exception e) {
+            logger.error("syncUuid error..." + getExceptionString(e));
+        }
+    }
+
+    // TODO: 2016/10/24
+    private void addRegionAlias(String name, int id, int pid) {
+        Map<Integer, Integer> idMapping;
+        if (regionAlias.containsKey(name)) {
+            idMapping = regionAlias.get(name);
+            idMapping.put(id, pid);
+        } else {
+            idMapping = new HashMap<>();
+            idMapping.put(id, pid);
+            regionAlias.put(name, idMapping);
+        }
     }
 
     private void LoadWords() {
@@ -147,6 +238,9 @@ public class CutWordsBolt extends AbstractRedisBolt {
         attach.put("titleTermInfo", titleTermInfo);
         attach.put("contentRaw", contentRaw);
         attach.put("contentTermInfo", combine(contentTermInfo, contentRaw));
+        attach.put("clientCtrl", clientWordsCtrl);
+        attach.put("riskCtrl", riskWordsCtrl);
+        attach.put("indRegCtrl", indRegRiskWordsCtrl);
         helper.emitAttach(input, attach, true);
         helper.ack(input);
     }
@@ -164,10 +258,10 @@ public class CutWordsBolt extends AbstractRedisBolt {
             for (int j = 0; j < tempSeg.size(); j++) {
                 TermFrequencyInfo tfi = gson.fromJson(tempSeg.get(j), TermFrequencyInfo.class);
                 nature.putAll(tfi.termNature);
-                StormUtil.parseMap(frequency, tfi.termFrequency[0]);
-                StormUtil.parseMap(offset, tfi.termOffsets, position);
+                parseMap(frequency, tfi.termFrequency[0]);
+                parseMap(offset, tfi.termOffsets, position);
                 position += sentences.get(j).length();
-                StormUtil.addMap(offset, "。", position);
+                addMap(offset, "。", position);
                 ++position;
             }
         }
@@ -176,6 +270,41 @@ public class CutWordsBolt extends AbstractRedisBolt {
         tfiR.termNature = nature;
         tfiR.termOffsets = offset;
         return tfiR;
+    }
+
+    // TODO: 2016/10/24
+    private void addMap(Map<String, List<Integer>> map, String key, int value) {
+        if (map.containsKey(key)) {
+            List<Integer> li = map.get(key);
+            li.add(value);
+        } else {
+            List<Integer> li = new ArrayList<>();
+            li.add(value);
+            map.put(key, li);
+        }
+    }
+
+    public static void parseMap(Map<String, Integer> map, Map<String, Integer> old) {
+        old.forEach((k, v) -> {
+            if (map.containsKey(k))
+                map.put(k, v + map.get(k));
+            else
+                map.put(k, v);
+        });
+    }
+
+    public static void parseMap(Map<String, List<Integer>> map, Map<String, List<Integer>> old, int position) {
+        for (String word : old.keySet()) {
+            if (map.containsKey(word)) {
+                List<Integer> pos = map.get(word);
+                old.get(word).stream().forEach(p -> pos.add(p + position));
+            }
+            else {
+                List<Integer> pos = new ArrayList<>();
+                old.get(word).stream().forEach(p -> pos.add(p + position));
+                map.put(word, pos);
+            }
+        }
     }
 
     @Override

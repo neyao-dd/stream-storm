@@ -1,11 +1,14 @@
 package cn.com.deepdata.streamstorm.entity;
 
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-public class ConcreteRisk {
-	
+public class ConcreteRisk implements Cloneable {
 	private int id;
 	private int clientId;
 	private String name;
@@ -41,11 +44,6 @@ public class ConcreteRisk {
 	}
 
 	public void addBehavior(String key, int value) {
-//		if (behavior.containsKey(key)) {
-//			behavior.put(key, behavior.get(key) + count);
-//		} else {
-//			behavior.put(key, count);
-//		}
 		behavior.put(key, value);
 	}
 
@@ -58,11 +56,6 @@ public class ConcreteRisk {
 	}
 
 	public void addLocation(String key, int value) {
-//		if (location.containsKey(key)) {
-//			location.put(key, location.get(key) + count);
-//		} else {
-//			location.put(key, count);
-//		}
 		location.put(key, value);
 	}
 
@@ -75,11 +68,6 @@ public class ConcreteRisk {
 	}
 
 	public void addRisk(String key, int value) {
-//		if (risk.containsKey(key)) {
-//			risk.put(key, risk.get(key) + count);
-//		} else {
-//			risk.put(key, count);
-//		}
 		risk.put(key, value);
 	}
 
@@ -97,12 +85,9 @@ public class ConcreteRisk {
 	}
 
 	public void addObject(String key, int value) {
+		if (0 == value)
+			return ;
 		object.put(key, value);
-//		if (object.containsKey(key)) {
-//			object.put(key, object.get(key) + 1);
-//		} else {
-//			object.put(key, 1);
-//		}
 	}
 
 	public double getScore() {
@@ -169,9 +154,13 @@ public class ConcreteRisk {
 				String ps = getWordpos(words[0]) + "," + getWordpos(words[1]);
 				list.add(key + " " + map.get(key) + " " + ps);
 			}
-//			list.add(key + " " + map.get(key));
 		}
 		return list;
+	}
+
+	@Override
+	public Object clone() throws CloneNotSupportedException {
+		return super.clone();
 	}
 
 	public int getClientId() {
