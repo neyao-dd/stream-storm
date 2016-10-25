@@ -7,7 +7,10 @@ includes:
   - resource: false
     file: "conf/JedisComponents.yaml"
     override: false
-  
+  - resource: false
+    file: "conf/indRegComponents.yaml"
+    override: false
+
 config:
   topology.workers: 1
   topology.max.spout.pending: 1000
@@ -17,8 +20,10 @@ spouts:
   - id: "es-spout"
     className: "org.elasticsearch.storm.EsSpout"
     constructorArgs:
-      - "storm-test1/flumetype"
-      - "?q=*"
+#      - "storm-test1/flumetype"
+#      - "?q=*"
+      - "flume-2016-10-19-content-forum/flumetype"
+      - "?q=sns_monthId:AVfaP4Kc0YF0yYykd4Yb"
       - ref: "esReaderConf"
     parallelism: 1
 
@@ -32,6 +37,13 @@ bolts:
     className: "cn.com.deepdata.streamstorm.bolt.CutWordsBolt"
     constructorArgs:
       - ref: "analyzerJedisConf"
+    parallelism: 1
+
+  - id: "indReg-analyze"
+    className: "cn.com.deepdata.streamstorm.bolt.AnalyzeIndRegRiskBolt"
+    constructorArgs:
+      - ref: "analyzerJedisConf"
+      - ref: "analyzerIndReg"
     parallelism: 1
 
 #stream definitions

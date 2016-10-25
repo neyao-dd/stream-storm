@@ -4,7 +4,6 @@ import cn.com.deepdata.commonutil.AnsjTermAnalyzer;
 import cn.com.deepdata.commonutil.TermFrequencyInfo;
 import cn.com.deepdata.streamstorm.controller.RedisKeys;
 import cn.com.deepdata.streamstorm.controller.UsrDefineWordsController;
-import cn.com.deepdata.streamstorm.entity.Region;
 import cn.com.deepdata.streamstorm.entity.RiskFields;
 import cn.com.deepdata.streamstorm.util.RegionUtil;
 import com.google.common.collect.Lists;
@@ -22,14 +21,13 @@ import org.apache.storm.tuple.Tuple;
 import redis.clients.jedis.JedisCommands;
 
 import java.util.*;
-import static cn.com.deepdata.streamstorm.util.StormUtil.*;
 
 @SuppressWarnings({"serial", "rawtypes"})
 public class CutWordsBolt extends AbstractRedisBolt {
     private transient static Log logger = LogFactory.getLog(CutWordsBolt.class);
     private transient DeepRichBoltHelper helper;
     private transient static AnsjTermAnalyzer ansjAnalyzer;
-    private transient static byte[] syncWordsLock;
+    private transient static final byte[] syncWordsLock = new byte[0];
     private transient static Long lastSyncTime;
     private transient static UsrDefineWordsController clientWordsCtrl;
     private transient static UsrDefineWordsController riskWordsCtrl;
@@ -51,7 +49,6 @@ public class CutWordsBolt extends AbstractRedisBolt {
         RegionUtil region = new RegionUtil("");
         Map<String, Map<Integer, Integer>> regionAlias = region.getRegionAlias();
         ansjAnalyzer = new AnsjTermAnalyzer();
-        syncWordsLock = new byte[0];
         lastSyncTime = 0L;
         clientWordsCtrl = new UsrDefineWordsController(
                 RedisKeys.CreateRedisKey(RedisKeys.Type.kClient), "CT");
@@ -158,34 +155,35 @@ public class CutWordsBolt extends AbstractRedisBolt {
         helper.ack(input);
     }
 
-    private TermFrequencyInfo combine(List<List<String>> cut, List<List<String>> segments) {
+    private List<TermFrequencyInfo> combine (List<List<String>> tokens, List<List<String>> content) {
         Gson gson = new Gson();
         int position = 0;
-        HashMap<String, Integer> frequency = new HashMap<>();
-        HashMap<String, String> nature = new HashMap<>();
-        HashMap<String, List<Integer>> offset = new HashMap<>();
-        TermFrequencyInfo tfiR = new TermFrequencyInfo(1);
-        for (int i = 0; i < cut.size(); i++) {
-            List<String> tempSeg = cut.get(i);
-            List<String> sentences = segments.get(i);
+        List<TermFrequencyInfo> list = new ArrayList<>();
+        for (int i = 0; i < tokens.size(); i++) {
+            HashMap<String, Integer> frequency = new HashMap<>();
+            HashMap<String, String> nature = new HashMap<>();
+            HashMap<String, List<Integer>> offset = new HashMap<>();
+            TermFrequencyInfo tfiCopy = new TermFrequencyInfo(1);
+            List<String> tempSeg = tokens.get(i);
+            List<String> sentences = content.get(i);
             for (int j = 0; j < tempSeg.size(); j++) {
                 TermFrequencyInfo tfi = gson.fromJson(tempSeg.get(j), TermFrequencyInfo.class);
                 nature.putAll(tfi.termNature);
-                parseMap(frequency, tfi.termFrequency[0]);
-                parseMap(offset, tfi.termOffsets, position);
+                putMap(frequency, tfi.termFrequency[0]);
+                putMap(offset, tfi.termOffsets, position);
                 position += sentences.get(j).length();
                 addMap(offset, "。", position);
                 ++position;
             }
+            tfiCopy.totalTermCount = frequency.size();
+            tfiCopy.termFrequency[0] = frequency;
+            tfiCopy.termNature = nature;
+            tfiCopy.termOffsets = offset;
+            list.add(tfiCopy);
         }
-        tfiR.totalTermCount = frequency.size();
-        tfiR.termFrequency[0] = frequency;
-        tfiR.termNature = nature;
-        tfiR.termOffsets = offset;
-        return tfiR;
+        return list;
     }
 
-    // TODO: 2016/10/24
     private void addMap(Map<String, List<Integer>> map, String key, int value) {
         if (map.containsKey(key)) {
             List<Integer> li = map.get(key);
@@ -197,7 +195,7 @@ public class CutWordsBolt extends AbstractRedisBolt {
         }
     }
 
-    public static void parseMap(Map<String, Integer> map, Map<String, Integer> old) {
+    public static void putMap(Map<String, Integer> map, Map<String, Integer> old) {
         old.forEach((k, v) -> {
             if (map.containsKey(k))
                 map.put(k, v + map.get(k));
@@ -206,7 +204,7 @@ public class CutWordsBolt extends AbstractRedisBolt {
         });
     }
 
-    public static void parseMap(Map<String, List<Integer>> map, Map<String, List<Integer>> old, int position) {
+    public static void putMap(Map<String, List<Integer>> map, Map<String, List<Integer>> old, int position) {
         for (String word : old.keySet()) {
             if (map.containsKey(word)) {
                 List<Integer> pos = map.get(word);

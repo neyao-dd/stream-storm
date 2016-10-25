@@ -10,7 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static cn.com.deepdata.streamstorm.util.StormUtil.*;
+import static cn.com.deepdata.streamstorm.util.RESTUtil.*;
 
 /**
  * Created by yukh on 2016/10/24
@@ -52,8 +52,8 @@ public class RegionUtil {
     public void syncNewRegion() {
         try {
             Gson gson = new Gson();
-            String response = getRequest(getRegionHost());
-            Map<String, Object> region = gson.fromJson(response, type_hos);
+            String response = getRequest(host);
+            Map<String, Object> region = gson.fromJson(response, TypeProvider.type_hso);
             List<Map<String, Object>> areaList;
             String[] areaType = {"AREA", "CITY", "PROVINCE"};
             for (String at : areaType) {
@@ -79,11 +79,11 @@ public class RegionUtil {
                 }
             }
         } catch (Exception e) {
-            logger.error("syncRegion error..." + getExceptionString(e));
+            logger.error("syncRegion error..." + CommonUtil.getExceptionString(e));
         }
     }
 
-    // TODO: 2016/10/24
+    // TODO: 2016/10/24 multimap
     public void addRegionAlias(String name, int id, int pid) {
         Map<Integer, Integer> idMapping;
         if (regionAlias.containsKey(name)) {
