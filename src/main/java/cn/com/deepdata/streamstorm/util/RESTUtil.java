@@ -19,6 +19,8 @@ public class RESTUtil {
 
     public static String getRequest(String host) {
         WebResource webResource = client.resource(host);
+        logger.debug("debug:" + host);
+        logger.info("info:" + host);
         ClientResponse response = webResource.accept("application/json").get(ClientResponse.class);
         if (response.getStatus() != 200) {
             throw new RuntimeException("Failed : HTTP error code : " + response.getStatus());

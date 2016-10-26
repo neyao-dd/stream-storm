@@ -8,8 +8,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static cn.com.deepdata.streamstorm.util.RESTUtil.getExceptionString;
-
 /**
  * Created by Administrator on 2016/10/24
  */
@@ -49,11 +47,10 @@ public class ClientUuidUtil {
     public void syncUuid() {
         try {
             Gson gson = new Gson();
-            int page = 0;
             int currentPage;
             do {
                 String result = RESTUtil.getRequest(host);
-                Map<String, Object> resultMap = gson.fromJson(result, RESTUtil.type_hos);
+                Map<String, Object> resultMap = gson.fromJson(result, TypeProvider.type_hso);
                 currentPage = (int) (double) resultMap.get("current_page_total");
                 List<Map<String, Object>> items = (List<Map<String, Object>>) resultMap.get("page_items");
                 for (Map<String, Object> map : items) {
@@ -63,10 +60,9 @@ public class ClientUuidUtil {
                     uuidById.put(id, uuid);
                     idByName.put(name, id);
                 }
-                page++;
             } while (currentPage > 0);
         } catch (Exception e) {
-            logger.error("syncUuid error..." + getExceptionString(e));
+            logger.error("syncUuid error..." + CommonUtil.getExceptionString(e));
         }
     }
 }

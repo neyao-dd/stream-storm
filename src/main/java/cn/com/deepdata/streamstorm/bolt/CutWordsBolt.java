@@ -33,20 +33,23 @@ public class CutWordsBolt extends AbstractRedisBolt {
     private transient static UsrDefineWordsController riskWordsCtrl;
     private transient static UsrDefineWordsController indRegRiskWordsCtrl;
     private transient static UsrDefineWordsController adWordsCtrl;
+    private String host;
 
-    public CutWordsBolt(JedisPoolConfig config) {
+    public CutWordsBolt(JedisPoolConfig config, String host) {
         super(config);
+        this.host = host;
     }
 
-    public CutWordsBolt(JedisClusterConfig config) {
+    public CutWordsBolt(JedisClusterConfig config, String host) {
         super(config);
+        this.host = host;
     }
 
     @Override
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector collector) {
         super.prepare(map, topologyContext, collector);
         helper = new DeepRichBoltHelper(collector);
-        RegionUtil region = new RegionUtil("");
+        RegionUtil region = new RegionUtil(host);
         Map<String, Map<Integer, Integer>> regionAlias = region.getRegionAlias();
         ansjAnalyzer = new AnsjTermAnalyzer();
         lastSyncTime = 0L;
@@ -106,6 +109,7 @@ public class CutWordsBolt extends AbstractRedisBolt {
 
     @Override
     public void execute(Tuple input) {
+        logger.info("################################" + input);
         Gson gson = new Gson();
         LoadWords();
         String titleRaw = deleteStartSpace(helper.getDocTitle(input));

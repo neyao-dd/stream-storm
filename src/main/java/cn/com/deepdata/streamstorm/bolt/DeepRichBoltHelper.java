@@ -21,21 +21,21 @@ public class DeepRichBoltHelper {
 		_collector = collector;
 	}
 
+	// TODO: 2016/10/26  
 	public Map<String, Object> getDoc(Tuple input) {
-//		if (!input.contains(fields[0])) {
-//			if (input.contains("doc")) {
-//				return (Map<String, Object>) input.getValueByField("doc");
-//			}
-//			return Maps.newHashMap();
-//		}
-//		Map<String, Object> doc = (Map<String, Object>) input.getValue(0);
-//		if (doc.containsKey("source")
-//				&& Map.class.isInstance(doc.get("source")))
-//			doc = (Map<String, Object>) doc.get("source");
-//		return doc;
-		return (Map<String, Object>) input.getValueByField("doc");
+		if (!input.contains(fields[0])) {
+			if (input.contains("doc"))
+				return (Map<String, Object>) input.getValueByField("doc");
+			return Maps.newHashMap();
+		}
+		Map<String, Object> doc = (Map<String, Object>) input.getValue(0);
+		if (doc.containsKey("source")
+				&& Map.class.isInstance(doc.get("source")))
+			doc = (Map<String, Object>) doc.get("source");
+		return doc;
 	}
 
+	// TODO: 2016/10/26  
 	public String getDocTitle(Tuple input) {
 //		Map<String, Object> doc = getDoc(input);
 //		return doc.containsKey("scc_title") && doc.get("scc_title") != null
@@ -47,6 +47,7 @@ public class DeepRichBoltHelper {
 		return getDoc(input).get("scc_title").toString();
 	}
 
+	// TODO: 2016/10/26  
 	public String getDocContent(Tuple input) {
 //		Map<String, Object> doc = getDoc(input);
 //		return doc.containsKey("scc_content") && doc.get("scc_content") != null

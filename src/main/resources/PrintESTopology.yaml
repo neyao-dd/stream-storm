@@ -8,7 +8,7 @@ includes:
     file: "conf/JedisComponents.yaml"
     override: false
   - resource: false
-    file: "conf/indRegComponents.yaml"
+    file: "conf/IndRegComponents.yaml"
     override: false
 
 config:
@@ -37,13 +37,14 @@ bolts:
     className: "cn.com.deepdata.streamstorm.bolt.CutWordsBolt"
     constructorArgs:
       - ref: "analyzerJedisConf"
+      - "${analyzer.indReg.host}"
     parallelism: 1
 
   - id: "indReg-analyze"
     className: "cn.com.deepdata.streamstorm.bolt.AnalyzeIndRegRiskBolt"
     constructorArgs:
       - ref: "analyzerJedisConf"
-      - ref: "analyzerIndReg"
+      - "${analyzer.indReg.host}"
     parallelism: 1
 
 #stream definitions

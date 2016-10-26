@@ -32,7 +32,7 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
     List<TermFrequencyInfo> contentTfi;
     TermFrequencyInfo titleTfi;
     UsrDefineWordsController indRegCtrl;
-    JedisCommands jedisCommands;
+//    JedisCommands jedisCommands;
 
     public AnalyzeIndRegRiskBolt(JedisPoolConfig config, String host) {
         super(config);
@@ -46,11 +46,12 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
         regionDetail = regionUtil.getRegionDetail();
         helper = new DeepRichBoltHelper(outputCollector);
         regionInfo = new HashMap<>();
-        jedisCommands = getInstance();
+//        jedisCommands = getInstance();
     }
 
     @Override
     public void execute(Tuple input) {
+        logger.info("@@@@@@@@@@@@@@@@@@@@@@@@@@@@" + input);
         try {
             String title = helper.getDocTitle(input);
             String content = helper.getDocContent(input);
@@ -63,15 +64,16 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
                 helper.ack(input);
                 return;
             }
-            Analyze(title, content);
+            IndRegRisk indRegRisk = Analyze(title, content);
+            logger.info(new Gson().toJson(indRegRisk));
             // TODO: 2016/10/25
             helper.emitDoc(input, doc, true);
 //            helper.emitAttach(input, attach, true);
             helper.ack(input);
         } catch (Exception e) {
             logger.error(CommonUtil.getExceptionString(e));
-        } finally {
-            returnInstance(jedisCommands);
+//        } finally {
+//            returnInstance(jedisCommands);
         }
     }
 
@@ -135,34 +137,43 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
         Gson gson = new Gson();
         double value = 0;
         Iterator<Map.Entry<Integer, Map<String, Set<String>>>> it = regionRiskInfo.entrySet().iterator();
-        while (it.hasNext()) {
-            Map.Entry<Integer, Map<String, Set<String>>> entry = it.next();
-            Map<String, Set<String>> match = entry.getValue();
-            if (match.containsKey("object") && match.containsKey("risk")) {
-                Set<String> mapObj = match.get("object");
-                Set<String> mapRisk = match.get("risk");
-                mapObj = splitSet(mapObj);
-                int minDistance = Integer.MAX_VALUE;
-                try {
-                    for (String wordObj : mapObj) {
-                        for (int posObj : offset.get(wordObj)) {
-                            for (String wordRisk : mapRisk) {
-                                for (int posRisk : offset.get(wordRisk)) {
-                                    minDistance = Math.min(minDistance, getDistance(posObj, posRisk, wordObj, wordRisk));
+        JedisCommands jedisCommands = null;
+        try {
+            jedisCommands = getInstance();
+            while (it.hasNext()) {
+                Map.Entry<Integer, Map<String, Set<String>>> entry = it.next();
+                Map<String, Set<String>> match = entry.getValue();
+                if (match.containsKey("object") && match.containsKey("risk")) {
+                    Set<String> mapObj = match.get("object");
+                    Set<String> mapRisk = match.get("risk");
+                    mapObj = splitSet(mapObj);
+                    int minDistance = Integer.MAX_VALUE;
+                    try {
+                        for (String wordObj : mapObj) {
+                            for (int posObj : offset.get(wordObj)) {
+                                for (String wordRisk : mapRisk) {
+                                    for (int posRisk : offset.get(wordRisk)) {
+                                        minDistance = Math.min(minDistance, getDistance(posObj, posRisk, wordObj, wordRisk));
+                                    }
                                 }
                             }
                         }
+                    } catch (NullPointerException e) {
+                        logger.error(CommonUtil.getExceptionString(e));
                     }
-                } catch (NullPointerException e) {
-                    logger.error(CommonUtil.getExceptionString(e));
+                    value = calScoreByDistance((double) minDistance, 70.0, 70.0, 35.0);
+                    String strRegionRisk = jedisCommands.get(RiskFields.regRiskItemPrefixKey.replace("%v%", indRegCtrl.version()) + entry.getKey());
+                    RegionRiskInfo info = gson.fromJson(strRegionRisk, RegionRiskInfo.class);
+                    value *= info.weight;
+                } else {
+                    it.remove();
                 }
-                value = calScoreByDistance((double) minDistance, 70.0, 70.0, 35.0);
-                String strRegionRisk = jedisCommands.get(RiskFields.regRiskItemPrefixKey.replace("%v%", indRegCtrl.version()) + entry.getKey());
-                RegionRiskInfo info = gson.fromJson(strRegionRisk, RegionRiskInfo.class);
-                value *= info.weight;
-            } else {
-                it.remove();
             }
+        } catch (Exception e) {
+
+        } finally {
+            if (jedisCommands != null)
+                returnInstance(jedisCommands);
         }
         return value < 0 ? 0. : (value *= 20);
     }
@@ -272,7 +283,9 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
         IndRegRisk riskResult = new IndRegRisk();
         Map<String, Integer> riskTerm = new HashMap<>();
         getRegion(tfi, regionInfo, weight);
+        JedisCommands jedisCommands = null;
         try {
+            jedisCommands = getInstance();
             // TODO: 2016/10/18 取消riskInfo
             tfi.termFrequency[0].keySet().stream().filter(word -> tfi.termNature.get(word).contains("risk")).forEach(
                     word -> riskTerm.put(word, tfi.termFrequency[0].get(word))
@@ -298,6 +311,9 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
                 riskResult.regionRisk = regionRisk;
         } catch (Exception e) {
             logger.error(e.toString());
+        } finally {
+            if (jedisCommands != null)
+                returnInstance(jedisCommands);
         }
         return riskResult;
     }
