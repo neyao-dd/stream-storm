@@ -27,6 +27,8 @@ public class RegionUtil {
         long s = System.currentTimeMillis();
         syncNewRegion();
         logger.info("loadNewRegion use time:" + (System.currentTimeMillis() - s));
+        logger.info("regionAlias size:" + regionAlias.size());
+        logger.info("regionDetail size():" + regionDetail.size());
     }
 
     public Map<String, Map<Integer, Integer>> getRegionAlias() {
@@ -40,27 +42,29 @@ public class RegionUtil {
     public String getRegionName(int id) {
         if (regionDetail.containsKey(id))
             return regionDetail.get(id).sca_region;
-        throw new NullPointerException("缺少的地区id：" + id);
+        logger.error("缺少名字的地区id：" + id);
+        return "";
     }
 
     public int getParentId(int id) {
         if (regionDetail.containsKey(id))
             return regionDetail.get(id).ina_pid;
-        throw new NullPointerException("缺少的地区id：" + id);
+        logger.error("缺少id的地区id：" + id);
+        return 0;
     }
 
     public void syncNewRegion() {
         try {
             Gson gson = new Gson();
             String response = getRequest(host);
-            Map<String, Object> region = gson.fromJson(response, TypeProvider.type_hso);
+            Map<String, Object> region = gson.fromJson(response, TypeProvider.type_mso);
             List<Map<String, Object>> areaList;
             String[] areaType = {"AREA", "CITY", "PROVINCE"};
             for (String at : areaType) {
                 areaList = (List<Map<String, Object>>) region.get(at);
                 for (Map<String, Object> areaInfo : areaList) {
                     List<Map<String, Object>> alias = (ArrayList<Map<String, Object>>) areaInfo.get("alias");
-                    if (isValid(alias))
+                    if (validList(alias))
                         continue;
                     int id = Integer.parseInt(areaInfo.get("id").toString());
                     String name = areaInfo.get("name").toString();
@@ -96,7 +100,7 @@ public class RegionUtil {
         }
     }
 
-    public boolean isValid(List list) {
+    public boolean validList(List list) {
         return list == null || list.isEmpty();
     }
 }

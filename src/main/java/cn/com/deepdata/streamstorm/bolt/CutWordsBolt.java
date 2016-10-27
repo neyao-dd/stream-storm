@@ -109,7 +109,6 @@ public class CutWordsBolt extends AbstractRedisBolt {
 
     @Override
     public void execute(Tuple input) {
-        logger.info("################################" + input);
         Gson gson = new Gson();
         LoadWords();
         String titleRaw = deleteStartSpace(helper.getDocTitle(input));

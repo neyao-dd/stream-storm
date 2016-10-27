@@ -50,7 +50,7 @@ public class ClientUuidUtil {
             int currentPage;
             do {
                 String result = RESTUtil.getRequest(host);
-                Map<String, Object> resultMap = gson.fromJson(result, TypeProvider.type_hso);
+                Map<String, Object> resultMap = gson.fromJson(result, TypeProvider.type_mso);
                 currentPage = (int) (double) resultMap.get("current_page_total");
                 List<Map<String, Object>> items = (List<Map<String, Object>>) resultMap.get("page_items");
                 for (Map<String, Object> map : items) {

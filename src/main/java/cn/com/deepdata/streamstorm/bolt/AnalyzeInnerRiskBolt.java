@@ -184,7 +184,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 
     private void convertClientDebugInfo(Map<String, Integer> clientDebugInfo, Map<Integer, Map<String, Set<String>>> cliDebugInfo) {
         for (Map.Entry<String, Integer> entry : clientDebugInfo.entrySet()) {
-            Map<String, String> info = gson.fromJson(entry.getKey(), TypeProvider.type_hss);
+            Map<String, String> info = gson.fromJson(entry.getKey(), TypeProvider.type_mss);
             int id = Integer.parseInt(info.get("id"));
             String ctype = info.get("type");
             if (info.get("certain").equals("0"))
@@ -273,7 +273,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
             if (nature.get(word).contains("CT") || nature.get(word).contains("nr")) {
                 Set<String> infoSet = getItemSet(RiskFields.clientTokenItemPrefixKey, word, clientWordsCtrl.version());
                 for (String str : infoSet) {
-                    infoCT = gson.fromJson(str, TypeProvider.type_hss);
+                    infoCT = gson.fromJson(str, TypeProvider.type_mss);
                     String cid = infoCT.get("id");
                     String craw = infoCT.get("raw");
                     String ctype = infoCT.get("type");
@@ -350,7 +350,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
             if (nature.get(word).contains("RT")) {
                 Set<String> infoSet = getItemSet(RiskFields.riskTokenItemPrefixKey, word, riskWordsCtrl.version());
                 for (String str : infoSet) {
-                    infoRT = gson.fromJson(str, TypeProvider.type_hss);
+                    infoRT = gson.fromJson(str, TypeProvider.type_mss);
                     int id = Integer.parseInt(infoRT.get("id"));
                     String raw = infoRT.get("raw");
                     String type = infoRT.get("type");
