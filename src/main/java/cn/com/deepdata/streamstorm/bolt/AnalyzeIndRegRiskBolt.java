@@ -32,7 +32,6 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
     List<TermFrequencyInfo> contentTfi;
     TermFrequencyInfo titleTfi;
     UsrDefineWordsController indRegCtrl;
-//    JedisCommands jedisCommands;
 
     public AnalyzeIndRegRiskBolt(JedisPoolConfig config, String host) {
         super(config);
@@ -298,8 +297,7 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
                 List<String> riskWordInfoList = gson.fromJson(riskWordInfo, TypeProvider.type_ls);
                 for (String s_info : riskWordInfoList) {
 //					["{\"raw\":\"农业市场\",\"id\":\"32\",\"property\":\"classify1\",\"type\":\"2\"}","{\"raw\":\"农业市场\",\"id\":\"31\",\"property\":\"classify1\",\"type\":\"2\"}"]
-                    logger.info("~~~~~~~~~~~~~~~~~~~~~~" + s_info);
-                    HashMap<String, String> info = gson.fromJson(s_info, TypeProvider.type_mss);
+                    Map<String, String> info = gson.fromJson(s_info, TypeProvider.type_mss);
                     int riskType = Integer.parseInt(info.get("type"));
                     if (riskType == 1)
                         addRiskInfo(regionRiskInfo, info, riskTerm);

@@ -48,19 +48,21 @@ public class ClientUuidUtil {
         try {
             Gson gson = new Gson();
             int currentPage;
-            do {
-                String result = RESTUtil.getRequest(host);
-                Map<String, Object> resultMap = gson.fromJson(result, TypeProvider.type_mso);
-                currentPage = (int) (double) resultMap.get("current_page_total");
-                List<Map<String, Object>> items = (List<Map<String, Object>>) resultMap.get("page_items");
-                for (Map<String, Object> map : items) {
-                    String uuid = map.get("uuid").toString();
-                    int id = (int) (double) map.get("id");
-                    String name = map.get("name").toString();
-                    uuidById.put(id, uuid);
-                    idByName.put(name, id);
-                }
-            } while (currentPage > 0);
+//            do {
+            String result = RESTUtil.getRequest(host);
+            Map<String, Object> resultMap = gson.fromJson(result, TypeProvider.type_mso);
+//                currentPage = (int) (double) resultMap.get("current_page_total");
+            List<Map<String, Object>> items = (List<Map<String, Object>>) resultMap.get("page_items");
+            for (Map<String, Object> map : items) {
+                String uuid = map.get("uuid").toString();
+                int id = (int) (double) map.get("id");
+                String name = map.get("name").toString();
+                uuidById.put(id, uuid);
+                idByName.put(name, id);
+            }
+            logger.info("uuidById:" + uuidById.size());
+            logger.info("idByName:" + idByName.size());
+//            } while (currentPage > 0);
         } catch (Exception e) {
             logger.error("syncUuid error..." + CommonUtil.getExceptionString(e));
         }

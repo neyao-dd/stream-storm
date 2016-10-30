@@ -7,9 +7,6 @@ includes:
   - resource: false
     file: "conf/JedisComponents.yaml"
     override: false
-  - resource: false
-    file: "conf/IndRegComponents.yaml"
-    override: false
 
 config:
   topology.workers: 1
@@ -37,15 +34,23 @@ bolts:
     className: "cn.com.deepdata.streamstorm.bolt.CutWordsBolt"
     constructorArgs:
       - ref: "analyzerJedisConf"
-      - "${analyzer.indReg.host}"
+      - "${analyzer.region.host}"
     parallelism: 1
 
   - id: "indReg-analyze"
     className: "cn.com.deepdata.streamstorm.bolt.AnalyzeIndRegRiskBolt"
     constructorArgs:
       - ref: "analyzerJedisConf"
-      - "${analyzer.indReg.host}"
+      - "${analyzer.region.host}"
     parallelism: 1
+
+   - id: "indReg-analyze"
+      className: "cn.com.deepdata.streamstorm.bolt.AnalyzeInnerRiskBolt"
+      constructorArgs:
+        - ref: "analyzerJedisConf"
+        - "${analyzer.region.host}"
+        - "${analyzer.uuid.host}"
+      parallelism: 1
 
 #stream definitions
 streams:

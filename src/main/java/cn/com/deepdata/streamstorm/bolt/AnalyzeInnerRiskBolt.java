@@ -10,7 +10,6 @@ import cn.com.deepdata.streamstorm.util.TypeProvider;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import org.apache.storm.redis.bolt.AbstractRedisBolt;
-import org.apache.storm.redis.common.config.JedisClusterConfig;
 import org.apache.storm.redis.common.config.JedisPoolConfig;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -30,9 +29,7 @@ import java.util.*;
 public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
     private static final Logger logger = LoggerFactory.getLogger(AnalyzeInnerRiskBolt.class);
     private String calcType;
-    private Gson gson = new Gson();
     private Map<Integer, Double> rWeight = new HashMap<>();
-    private JedisCommands jedisCommands = getInstance();
     private TermFrequencyInfo titleTfi;
     private List<TermFrequencyInfo> contentTfi;
     private UsrDefineWordsController clientWordsCtrl;
@@ -46,28 +43,30 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
     double peopleScore2 = 0.2;
     double otherScore = 0.6;
     double otherScore2 = 0.15;
-    private transient DeepRichBoltHelper helper;
-    private transient RegionUtil region;
-    private transient ClientUuidUtil idUtil;
+    private DeepRichBoltHelper helper;
+    private RegionUtil region;
+    private ClientUuidUtil idUtil;
+    private String regionHost;
+    private String idHost;
 
     final double INVALID_WEIGHT = Double.MAX_VALUE;
     final String[] CT_CATE_CN = {"[品牌+]","[品牌-]", "[产品+]", "[产品-]", "[人名+]", "[人名-]", "[其它+]", "[其它-]"};
     final String[] CT_CATE_EN = {"brand", "product", "people", "other"};
     final String[] SYMBOL = {"(", ")", "（", "）", "《", "》"};
 
-    public AnalyzeInnerRiskBolt(JedisPoolConfig config) {
+    public AnalyzeInnerRiskBolt(JedisPoolConfig config, String regionHost, String idHost) {
         super(config);
-    }
-
-    public AnalyzeInnerRiskBolt(JedisClusterConfig config) {
-        super(config);
+        this.regionHost = regionHost;
+        this.idHost = idHost;
     }
 
     @Override
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector collector) {
         super.prepare(map, topologyContext, collector);
         helper = new DeepRichBoltHelper(collector);
+        JedisCommands jedisCommands = null;
         try {
+            jedisCommands = getInstance();
             calcType = "paragraph";
             if (jedisCommands.get(RiskFields.brandScoreKey) != null) {
                 brandScore = Double.parseDouble(jedisCommands.get(RiskFields.brandScoreKey));
@@ -81,14 +80,17 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
             }
         } catch (Exception e) {
             logger.error(e.toString());
+        } finally {
+            if (null != jedisCommands)
+                returnInstance(jedisCommands);
         }
-        // TODO: 2016/10/24 host.conf
-        region = new RegionUtil("");
-        idUtil = new ClientUuidUtil("");
+        region = new RegionUtil(regionHost);
+        idUtil = new ClientUuidUtil(idHost);
     }
 
     @Override
     public void execute(Tuple input) {
+        Gson gson = new Gson();
         Map<String, Object> attach = helper.getAttach(input);
         Map<String, Object> source = helper.getDoc(input);
         init(attach);
@@ -97,26 +99,22 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
             int segNum = 1;
             String result;
             List<DescRiskScore> desRiskScore = new ArrayList<>();
-            // ct info 频率
-            Map<String, Integer> clientInfo = new HashMap<>();
-            // ct name [id]
-            Map<String, Set<String>> client = new HashMap<>();
-            // 风险id 客户id 得分
-            HashMap<Integer, Map<Integer, List<Double>>> desCli = new HashMap<>();
+            Map<String, Integer> clientInfo = new HashMap<>();                      // ct info 频率
+            Map<String, Set<String>> client = new HashMap<>();                      // ct name [id]
+            HashMap<Integer, Map<Integer, List<Double>>> desCli = new HashMap<>();  // 风险id 客户id 得分
             StringBuilder sb = new StringBuilder();
             Map<Integer, Double> totalCliScore = new HashMap<>();
-            // cId+raw:score
-            Map<String, Double> clientScore = new HashMap<>();
-            if (!attach.get("inp_type").equals("2")) {
-                //微博的inp_type == 2  微博没有标题
-                String title = helper.getDocTitle(input);
+            Map<String, Double> clientScore = new HashMap<>();                      // cId+raw:score
+            if (!source.get("inp_type").equals("2")) {
+                String title = helper.getDocTitle(input);                           // 微博的inp_type == 2  微博没有标题
                 result = analyzeSegment(title, 0, clientInfo, client, clientScore, desCli);
                 sb.append(result);
             }
             String content = source.get("scc_content").toString();
             String[] segments = content.split("\r|\n");
             if (content.length() < 2 && content.length() > 500) {
-                // TODO: 2016/10/20 返回都需要处理
+                // TODO: 2016/10/20 返回都需要处理 ok
+                helper.emitAttach(input, attach, true);
                 helper.ack(input);
                 return ;
             }
@@ -130,8 +128,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
             Map<Integer, Map<String, Set<String>>> cliDebugInfo = new HashMap<>();
             convertClientDebugInfo(clientInfo, cliDebugInfo);
             getTotalCliScore(totalCliScore, clientScore);
-            // 加入list按分值排序
-            mapToList(desCli, totalCliScore, desRiskScore);
+            mapToList(desCli, totalCliScore, desRiskScore);                         // 加入list按分值排序
             desSort(desRiskScore);
             if (desRiskScore.size() > 0) {
                 irv.maxRiskScore = desRiskScore.get(0).getDna_score();
@@ -162,16 +159,16 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
             }
             irv.clientDebugInfo2 = gson.toJson(cliDebugInfo);
             irv.riskDebugInfo += sb.toString();
-            // TODO: 2016/10/25  
-//            helper.emitAttach(input, attach, true);
-//            helper.emitDoc(input, doc, true);
+
+            logger.info("~~~~~~~~~~~~~~~~~~" + gson.toJson(irv));
+            
+            // TODO: 2016/10/25  结果写入source or attach
+            helper.emitAttach(input, attach, true);
+            helper.emitDoc(input, source, true);
             helper.ack(input);
         } catch (Exception e) {
             logger.error("analyze inner risk error...");
             logger.error("Exception " + CommonUtil.getExceptionString(e));
-        } finally {
-            if (null != jedisCommands)
-                returnInstance(jedisCommands);
         }
     }
 
@@ -184,6 +181,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 
     private void convertClientDebugInfo(Map<String, Integer> clientDebugInfo, Map<Integer, Map<String, Set<String>>> cliDebugInfo) {
         for (Map.Entry<String, Integer> entry : clientDebugInfo.entrySet()) {
+            Gson gson = new Gson();
             Map<String, String> info = gson.fromJson(entry.getKey(), TypeProvider.type_mss);
             int id = Integer.parseInt(info.get("id"));
             String ctype = info.get("type");
@@ -264,7 +262,8 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
     private Map<String, Set<String>> analyzeSegmentCT(Map<String, Integer> clientInfo,
                                                       Map<String, Set<String>> client,
                                                       Map<String, Double> clientScore, int segNum) {
-        TermFrequencyInfo tfi = contentTfi.get(segNum - 1);
+        Gson gson = new Gson();
+        TermFrequencyInfo tfi = getTFI(segNum);
         Map<String, String> nature = tfi.termNature;
         Map<String, String> infoCT;
         // TODO: 2016/10/21 multiset
@@ -289,6 +288,10 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
         }
         clientFilter(ctByCate);
         return ctByCate;
+    }
+
+    private TermFrequencyInfo getTFI(int segNum) {
+        return segNum == 0 ? titleTfi : contentTfi.get(segNum - 1);
     }
 
     private void clientFilter(Map<String, Set<String>> ctByCate) {
@@ -343,7 +346,10 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
     }
 
     private void rtRecogniser(Map<Integer, ConcreteRisk> riskInfo, int segNum) {
-        TermFrequencyInfo tfi = contentTfi.get(segNum);
+        if(segNum != 8)
+            return ;
+        Gson gson = new Gson();
+        TermFrequencyInfo tfi = getTFI(segNum);
         Map<String, String> infoRT;
         Map<String, String> nature = tfi.termNature;
         for (String word : nature.keySet()) {
@@ -364,12 +370,15 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
                             addRisk(riskInfo, type, raw, count, id, weight);
                         } catch (Exception e) {
                             addRisk(riskInfo, type, raw, count, id, INVALID_WEIGHT);
+                            logger.error("~~~~~~~~~~~~~~~~~~~~~");
                         }
                     } else
                         addRisk(riskInfo, type, raw, count, id, INVALID_WEIGHT);
                 }
             }
         }
+        // TODO: 2016/10/28 to delete
+        logger.info("######riskInfo:{}" , gson.toJson(riskInfo));
     }
 
     private void addRisk(Map<Integer, ConcreteRisk> riskInfo, String type, String raw, int count, int id, double weight) {
@@ -408,6 +417,8 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
     }
 
     private void rtHandler(Map<Integer, ConcreteRisk> riskInfo, Map<String, Set<String>> ctByCate, int segNum) {
+        if (segNum != 8)
+            return;
         double weight = segNum > 1 ? 1. : segNum == 1 ? 1.2 : 1.5;
         Iterator<Map.Entry<Integer, ConcreteRisk>> it = riskInfo.entrySet().iterator();
         while (it.hasNext()) {
@@ -415,7 +426,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
             int id = entry.getKey();
             ConcreteRisk cr = entry.getValue();
             String riskItem = getItemByRedis(RiskFields.riskItemPrefixKey, String.valueOf(id), riskWordsCtrl.version());
-            RiskInfo item = gson.fromJson(riskItem, RiskInfo.class);
+            RiskInfo item = new Gson().fromJson(riskItem, RiskInfo.class);
             if (!validConcreteRisk(riskItem, cr) || addCTByCategory(cr, item.object, ctByCate, segNum)) {
                 it.remove();
                 continue;
@@ -430,17 +441,22 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 
 
     private boolean validConcreteRisk(String riskItem, ConcreteRisk cr) {
-        if (null == riskItem || null == cr || cr.getRisk().isEmpty() || cr.getBehavior().isEmpty())
-            return false;
-        RiskInfo info = gson.fromJson(riskItem, RiskInfo.class);
+        return !(null == riskItem || null == cr || cr.getRisk().isEmpty() || cr.getBehavior().isEmpty()) || validLocation(riskItem, cr);
+    }
+
+    private boolean validLocation(String riskItem, ConcreteRisk cr) {
+        RiskInfo info = new Gson().fromJson(riskItem, RiskInfo.class);
         return !(!info.location.isEmpty() && cr.getLocation().isEmpty());
     }
 
     private boolean addCTByCategory(ConcreteRisk cr, List<String> ctCate, Map<String, Set<String>> ct, int segNum) {
-        TermFrequencyInfo tfi = contentTfi.get(segNum);
+        TermFrequencyInfo tfi = getTFI(segNum);
         for (int i = 0; i < CT_CATE_EN.length; i++) {
             if (ctCate.contains(CT_CATE_CN[i * 2]) || ctCate.contains(CT_CATE_CN[i * 2 + 1]) && ct.containsKey(CT_CATE_EN[i])) {
                 Set<String> set = ct.get(CT_CATE_EN[i]);
+                // TODO: 2016/10/28 为什么Null
+                if (set == null)
+                    continue;
                 for (String word : set)
                     cr.addObject(word, numOfWord(word, tfi));
             }
@@ -450,7 +466,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 
     // TODO: 2016/10/21 data cleaning
     public void concreteFilter(ConcreteRisk cr, int segNum) {
-        TermFrequencyInfo tfi = contentTfi.get(segNum);
+        TermFrequencyInfo tfi = getTFI(segNum);
         for (int i = 0; i < SYMBOL.length; i += 2) {
             symbolFilter(tfi, SYMBOL[i], SYMBOL[i + 1], cr.getRisk());
             symbolFilter(tfi, SYMBOL[i], SYMBOL[i + 1], cr.getBehavior());
@@ -505,16 +521,26 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
                 Set<String> idSet = client.get(wordObj);
                 if (!idSet.isEmpty()) {
                     for (String cid : idSet) {
-                        ConcreteRisk cr;
-                        try{
-                            cr = (ConcreteRisk) rtInfo.get(rid).clone();
-                        } catch (CloneNotSupportedException e) {
-                            logger.error("ConcreteRisk clone() fail...");
-                            return null;
-                        }
+//                        ConcreteRisk cr;
+//                        try{
+//                            cr = (ConcreteRisk) rtInfo.get(rid).clone();
+//                        } catch (CloneNotSupportedException e) {
+//                            logger.error("ConcreteRisk clone() fail...");
+//                            return null;
+//                        }
+//                        cr.setId(rid);
+//                        cr.setClientId(Integer.parseInt(cid));
+//                        cr.setObject(wordObj, mapObj.get(wordObj));
+                        // TODO: 2016/10/28 简化
+                        ConcreteRisk cr = new ConcreteRisk();
                         cr.setId(rid);
                         cr.setClientId(Integer.parseInt(cid));
                         cr.setObject(wordObj, mapObj.get(wordObj));
+                        cr.setName(rtInfo.get(rid).getName());
+                        cr.setBehavior(rtInfo.get(rid).getBehavior());
+                        cr.setLocation(rtInfo.get(rid).getLocation());
+                        cr.setRisk(rtInfo.get(rid).getRisk());
+                        cr.setWeight(rtInfo.get(rid).getWeight());
                         if (!rWeight.isEmpty() && rWeight.containsKey(rid))
                             cr.setRiskWeight(rWeight.get(rid));
                         cr.setUuid(idUtil.getUuid(Integer.parseInt(cid)));
@@ -540,7 +566,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 
     private List<ConcreteRisk> riskItem(Map<String, ConcreteRisk> merge,
                                         Map<Integer, Map<Integer, List<Double>>> desCli, int segNum) {
-        TermFrequencyInfo tfi = contentTfi.get(segNum);
+        TermFrequencyInfo tfi = getTFI(segNum);
         List<ConcreteRisk> riskItem = new ArrayList<>();
         for (Map.Entry<String, ConcreteRisk> entry : merge.entrySet()) {
             ConcreteRisk cr = entry.getValue();
@@ -572,12 +598,13 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
         StringBuilder sb = new StringBuilder();
         for (ConcreteRisk cr : lc) {
             ResultRisk rr = cr.parseRR();
-            sb.append("risk:").append(gson.toJson(rr)).append("\n");
+            sb.append("risk:").append(new Gson().toJson(rr)).append("\n");
         }
         return sb.toString();
     }
 
     public double calRiskScoreBySentence(ConcreteRisk cr, Map<String, List<Integer>> offset) {
+        Gson gson = new Gson();
         double score;
         int minDistanceBR = Integer.MAX_VALUE;
         int minDistance = Integer.MAX_VALUE;
@@ -744,7 +771,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
         int avgPosition = Integer.MAX_VALUE;
         if (word1.equals(word2)) {
             result.put("min", "0");
-            result.put("avgArray", gson.toJson(offset.get(word1)));
+            result.put("avgArray", new Gson().toJson(offset.get(word1)));
             return result;
         }
         String[] sl = new String[2];
@@ -930,44 +957,19 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
         return true;
     }
 
-//    public void addMap(Map<Integer, Map<Integer, List<Double>>> map, int outerKey, int innerKey, double innerValue) {
-//        if (map.containsKey(outerKey)) {
-//            Map<Integer, List<Double>> inner = map.get(outerKey);
-//            addMap(inner, innerKey, innerValue);
-//        } else {
-//            Map<Integer, List<Double>> inner = new HashMap<>();
-//            addMap(inner, innerKey, innerValue);
-//            map.put(outerKey, inner);
-//        }
-//    }
-//
-//    // TODO: 2016/10/24
-//    private void addMap(Map<Integer, List<Double>> map, int key, double value){
-//        if (map.containsKey(key)){
-//            List<Double> list = map.get(key);
-//            list.add(value);
-//        } else {
-//            List<Double> list = new ArrayList<>();
-//            list.add(value);
-//            map.put(key, list);
-//        }
-//    }
-
     private Set<String> getItemSet(String query, String word, String version) {
         String info = getItemByRedis(query, word, version);
         if (null == info || 0 == info.length())
             return new HashSet<>();
-        return gson.fromJson(info, TypeProvider.type_ss);
+        return new Gson().fromJson(info, TypeProvider.type_ss);
     }
 
     private String getItemByRedis(String query, String word, String version) {
-        return jedisCommands.get(query.replace("%v%", version) + word);
+        JedisCommands jedisCommands = getInstance();
+        String item = jedisCommands.get(query.replace("%v%", version) + word);
+        returnInstance(jedisCommands);
+        return item;
     }
-
-//    private RiskInfo getRiskInfo(String query, String word, String version) {
-//        String info = getItemByRedis(query, word, version);
-//        if
-//    }
 
     private boolean wordExisted(String word, TermFrequencyInfo tfi) {
         return numOfWord(word, tfi) > 0;
