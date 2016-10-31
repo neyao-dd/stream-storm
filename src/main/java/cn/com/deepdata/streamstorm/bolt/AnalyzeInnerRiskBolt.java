@@ -252,6 +252,8 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
             Map<Integer, ConcreteRisk> rtInfo = analyzeSegmentRT(ctByCate, segNum);
             if (!rtInfo.isEmpty()) {
                 List<ConcreteRisk> result = riskItemByClient(rtInfo, desCli, client, clientScore, segNum);
+                if (segNum == 8)
+                    logger.info("@@@@@@@@@" + new Gson().toJson(result));
                 if (!result.isEmpty())
                     sb.append("segment:").append(segNum).append("\n").append(convertResult(result));
             }
@@ -417,8 +419,8 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
     }
 
     private void rtHandler(Map<Integer, ConcreteRisk> riskInfo, Map<String, Set<String>> ctByCate, int segNum) {
-        if (segNum != 8)
-            return;
+//        if (segNum != 8)
+//            return;
         double weight = segNum > 1 ? 1. : segNum == 1 ? 1.2 : 1.5;
         Iterator<Map.Entry<Integer, ConcreteRisk>> it = riskInfo.entrySet().iterator();
         while (it.hasNext()) {
@@ -561,18 +563,24 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
                 }
             }
         }
+//        if(segNum == 8)
+//            logger.info("@@@@@@@merge:" + new Gson().toJson(merge));
         return riskItem(merge, desCli, segNum);
     }
 
     private List<ConcreteRisk> riskItem(Map<String, ConcreteRisk> merge,
                                         Map<Integer, Map<Integer, List<Double>>> desCli, int segNum) {
+        if (segNum != 8)
+            return null;
         TermFrequencyInfo tfi = getTFI(segNum);
         List<ConcreteRisk> riskItem = new ArrayList<>();
         for (Map.Entry<String, ConcreteRisk> entry : merge.entrySet()) {
             ConcreteRisk cr = entry.getValue();
             double score = calRiskScoreBySentence(cr, tfi.termOffsets);
+            logger.info("%%%%%:" + new Gson().toJson(cr));
             score = numberFormat(score);
             score *= cr.getClientScore();
+            logger.info("score3 :" + score + ", client: " + cr.getClientScore() + ", segNum:" + segNum);
             cr.setScore(Math.min(100., score));
             cr.setScore_v2(Math.min(100., score * cr.getRiskWeight()));
             if (validScore(cr.getScore()))
