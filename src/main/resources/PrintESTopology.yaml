@@ -41,15 +41,14 @@ bolts:
     className: "cn.com.deepdata.streamstorm.bolt.AnalyzeIndRegRiskBolt"
     constructorArgs:
       - ref: "analyzerJedisConf"
-      - "${analyzer.region.host}"
+      - "${keystone.url}"
     parallelism: 1
 
    - id: "indReg-analyze"
       className: "cn.com.deepdata.streamstorm.bolt.AnalyzeInnerRiskBolt"
       constructorArgs:
         - ref: "analyzerJedisConf"
-        - "${analyzer.region.host}"
-        - "${analyzer.uuid.host}"
+        - "${keystone.url}"
       parallelism: 1
 
 #stream definitions

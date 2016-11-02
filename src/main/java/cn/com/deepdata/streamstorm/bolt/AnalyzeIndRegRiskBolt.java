@@ -1,12 +1,13 @@
 package cn.com.deepdata.streamstorm.bolt;
 
 import cn.com.deepdata.commonutil.TermFrequencyInfo;
-import cn.com.deepdata.streamstorm.controller.UsrDefineWordsController;
 import cn.com.deepdata.streamstorm.entity.*;
 import cn.com.deepdata.streamstorm.util.CommonUtil;
 import cn.com.deepdata.streamstorm.util.RegionUtil;
 import cn.com.deepdata.streamstorm.util.TypeProvider;
+
 import com.google.gson.Gson;
+
 import org.apache.storm.redis.bolt.AbstractRedisBolt;
 import org.apache.storm.redis.common.config.JedisPoolConfig;
 import org.apache.storm.task.OutputCollector;
@@ -16,6 +17,7 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import redis.clients.jedis.JedisCommands;
 
 import java.util.*;
@@ -23,19 +25,20 @@ import java.util.*;
 @SuppressWarnings({"serial", "rawtypes"})
 public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
     private transient static Logger logger = LoggerFactory.getLogger(AnalyzeIndRegRiskBolt.class);
+    private static final String keystoneRegionApi = "/keystone/api/v1/geo/area/_query";
     private transient DeepRichBoltHelper helper;
     private Map<String, Map<Integer, Integer>> regionAlias;
     private Map<Integer, Region> regionDetail;
     Map<String, Double> regionInfo;
     private RegionUtil regionUtil;
-    private String host;
+    private final String host;
     List<TermFrequencyInfo> contentTfi;
     TermFrequencyInfo titleTfi;
-    UsrDefineWordsController indRegCtrl;
+    String indRegCtrlVersion;
 
-    public AnalyzeIndRegRiskBolt(JedisPoolConfig config, String host) {
+    public AnalyzeIndRegRiskBolt(JedisPoolConfig config, String keystoneUrl) {
         super(config);
-        this.host = host;
+        this.host = keystoneUrl + keystoneRegionApi;
     }
 
     @Override
@@ -67,7 +70,7 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
                 return;
             }
             IndRegRisk indRegRisk = Analyze(title, content);
-            logger.info(new Gson().toJson(indRegRisk));
+            logger.debug(new Gson().toJson(indRegRisk));
             // TODO: 2016/10/25
             helper.emitDoc(input, doc, true);
 //            helper.emitAttach(input, attach, true);
@@ -92,7 +95,7 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
     private void init(Map<String, Object> attach) {
         titleTfi = (TermFrequencyInfo) attach.get("titleTermInfo");
         contentTfi = (List<TermFrequencyInfo>) attach.get("contentTermInfo");
-        indRegCtrl = (UsrDefineWordsController) attach.get("indRegCtrl");
+        indRegCtrlVersion = (String) attach.get("indRegCtrlVersion");
     }
 
     private void addRiskInfo(Map<Integer, Map<String, Set<String>>> riskInfo, Map<String, String> info,
@@ -162,7 +165,7 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
                         logger.error(CommonUtil.getExceptionString(e));
                     }
                     value = calScoreByDistance((double) minDistance, 70.0, 70.0, 35.0);
-                    String strRegionRisk = jedisCommands.get(RiskFields.regRiskItemPrefixKey.replace("%v%", indRegCtrl.version()) + entry.getKey());
+                    String strRegionRisk = jedisCommands.get(RiskFields.regRiskItemPrefixKey.replace("%v%", indRegCtrlVersion) + entry.getKey());
                     RegionRiskInfo info = gson.fromJson(strRegionRisk, RegionRiskInfo.class);
                     value *= info.weight;
                 } else {
@@ -293,7 +296,7 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
 
             for (String word : riskTerm.keySet()) {
                 String riskWordInfo = jedisCommands.get(RiskFields.indRegRiskTokenItemPrefixKey
-                        .replace("%v%", indRegCtrl.version()) + word);
+                        .replace("%v%", indRegCtrlVersion) + word);
                 List<String> riskWordInfoList = gson.fromJson(riskWordInfo, TypeProvider.type_ls);
                 for (String s_info : riskWordInfoList) {
 //					["{\"raw\":\"农业市场\",\"id\":\"32\",\"property\":\"classify1\",\"type\":\"2\"}","{\"raw\":\"农业市场\",\"id\":\"31\",\"property\":\"classify1\",\"type\":\"2\"}"]

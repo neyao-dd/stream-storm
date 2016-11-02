@@ -6,8 +6,10 @@ import cn.com.deepdata.streamstorm.controller.RedisKeys;
 import cn.com.deepdata.streamstorm.controller.UsrDefineWordsController;
 import cn.com.deepdata.streamstorm.entity.RiskFields;
 import cn.com.deepdata.streamstorm.util.RegionUtil;
+
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.storm.redis.bolt.AbstractRedisBolt;
@@ -18,6 +20,7 @@ import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
+
 import redis.clients.jedis.JedisCommands;
 
 import java.util.*;
@@ -25,6 +28,7 @@ import java.util.*;
 @SuppressWarnings({"serial", "rawtypes"})
 public class CutWordsBolt extends AbstractRedisBolt {
     private transient static Log logger = LogFactory.getLog(CutWordsBolt.class);
+    private static final String keystoneRegionApi = "/keystone/api/v1/geo/area/_query";
     private transient DeepRichBoltHelper helper;
     private transient static AnsjTermAnalyzer ansjAnalyzer;
     private transient static final byte[] syncWordsLock = new byte[0];
@@ -35,9 +39,9 @@ public class CutWordsBolt extends AbstractRedisBolt {
     private transient static UsrDefineWordsController adWordsCtrl;
     private String host;
 
-    public CutWordsBolt(JedisPoolConfig config, String host) {
+    public CutWordsBolt(JedisPoolConfig config, String keystoneUrl) {
         super(config);
-        this.host = host;
+        this.host = keystoneUrl + keystoneRegionApi;
     }
 
     public CutWordsBolt(JedisClusterConfig config, String host) {
@@ -151,9 +155,9 @@ public class CutWordsBolt extends AbstractRedisBolt {
         attach.put("titleTermInfo", titleTermInfo);
         attach.put("contentRaw", contentRaw);
         attach.put("contentTermInfo", combine(contentTermInfo, contentRaw));
-        attach.put("clientCtrl", clientWordsCtrl);
-        attach.put("riskCtrl", riskWordsCtrl);
-        attach.put("indRegCtrl", indRegRiskWordsCtrl);
+        attach.put("clientCtrlVersion", clientWordsCtrl.version());
+        attach.put("riskCtrlVersion", riskWordsCtrl.version());
+        attach.put("indRegCtrlVersion", indRegRiskWordsCtrl.version());
         helper.emitAttach(input, attach, true);
         helper.ack(input);
     }

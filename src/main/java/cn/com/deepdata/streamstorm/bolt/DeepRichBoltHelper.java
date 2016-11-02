@@ -21,7 +21,7 @@ public class DeepRichBoltHelper {
 		_collector = collector;
 	}
 
-	// TODO: 2016/10/26  
+	// TODO: 2016/10/26
 	public Map<String, Object> getDoc(Tuple input) {
 		if (!input.contains(fields[0])) {
 			if (input.contains("doc"))
@@ -35,24 +35,25 @@ public class DeepRichBoltHelper {
 		return doc;
 	}
 
-	// TODO: 2016/10/26  
+	// TODO: 2016/10/26
 	public String getDocTitle(Tuple input) {
-//		Map<String, Object> doc = getDoc(input);
-//		return doc.containsKey("scc_title") && doc.get("scc_title") != null
-//				&& doc.get("scc_title").toString().length() > 0 ? doc.get(
-//				"scc_title").toString() : doc.containsKey("scm_title")
-//				&& doc.get("scm_title") != null
-//				&& doc.get("scm_title").toString().length() > 0 ? doc.get(
-//				"scm_title").toString() : "";
+		// Map<String, Object> doc = getDoc(input);
+		// return doc.containsKey("scc_title") && doc.get("scc_title") != null
+		// && doc.get("scc_title").toString().length() > 0 ? doc.get(
+		// "scc_title").toString() : doc.containsKey("scm_title")
+		// && doc.get("scm_title") != null
+		// && doc.get("scm_title").toString().length() > 0 ? doc.get(
+		// "scm_title").toString() : "";
 		return getDoc(input).get("scc_title").toString();
 	}
 
-	// TODO: 2016/10/26  
+	// TODO: 2016/10/26
 	public String getDocContent(Tuple input) {
-//		Map<String, Object> doc = getDoc(input);
-//		return doc.containsKey("scc_content") && doc.get("scc_content") != null
-//				&& doc.get("scc_content").toString().length() > 0 ? doc.get(
-//				"scc_content").toString() : "";
+		// Map<String, Object> doc = getDoc(input);
+		// return doc.containsKey("scc_content") && doc.get("scc_content") !=
+		// null
+		// && doc.get("scc_content").toString().length() > 0 ? doc.get(
+		// "scc_content").toString() : "";
 		return getDoc(input).get("scc_content").toString();
 	}
 
@@ -69,32 +70,49 @@ public class DeepRichBoltHelper {
 	}
 
 	public List<Integer> emit(Tuple input, Map<String, Object> doc,
-			String action, Map<String, Object> attach, boolean anchor) {
+			String action, Map<String, Object> attach, boolean anchor,
+			String stream) {
 		if (doc == null)
 			doc = getDoc(input);
 		if (action == null)
 			action = getAction(input);
 		if (attach == null)
 			attach = getAttach(input);
-		if (anchor)
+		if (anchor && stream != null) {
+			return _collector.emit(stream, input, new Values(doc, action,
+					attach));
+		} else if (anchor) {
 			return _collector.emit(input, new Values(doc, action, attach));
-		else
+		} else if (stream != null) {
+			return _collector.emit(stream, new Values(doc, action, attach));
+		} else {
 			return _collector.emit(new Values(doc, action, attach));
+		}
+	}
+
+	public List<Integer> emit(Tuple input, Map<String, Object> doc,
+			String action, Map<String, Object> attach, boolean anchor) {
+		return emit(input, doc, action, attach, anchor, null);
+	}
+
+	public List<Integer> emit(Tuple input, boolean anchor, String stream) {
+		// TODO Auto-generated method stub
+		return emit(input, null, null, null, anchor, stream);
 	}
 
 	public List<Integer> emit(Tuple input, boolean anchor) {
 		// TODO Auto-generated method stub
-		return emit(input, null, null, null, anchor);
+		return emit(input, null, null, null, anchor, null);
 	}
 
 	public List<Integer> emitDoc(Tuple input, Map<String, Object> doc,
 			boolean anchor) {
-		return emit(input, doc, null, null, anchor);
+		return emit(input, doc, null, null, anchor, null);
 	}
 
 	public List<Integer> emitAttach(Tuple input, Map<String, Object> attach,
 			boolean anchor) {
-		return emit(input, null, null, attach, anchor);
+		return emit(input, null, null, attach, anchor, null);
 	}
 
 	public void ack(Tuple input) {

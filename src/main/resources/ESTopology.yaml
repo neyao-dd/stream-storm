@@ -29,20 +29,55 @@ bolts:
     className: "cn.com.deepdata.streamstorm.bolt.ParserBolt"
     parallelism: 4
     
+  - id: "action-lookup"
+    className: "cn.com.deepdata.streamstorm.bolt.ActionsRedisLookupBolt"
+    constructorArgs:
+      - ref: "analyzerJedisConf"
+    parallelism: 2
+    
   - id: "dedupliate"
     className: "cn.com.deepdata.streamstorm.bolt.DuplicateFilterBolt"
     constructorArgs:
       - ref: "duplicateJedisConf"
     parallelism: 1
     
-  - id: "cut"
+  - id: "split-stream"
+    className: "cn.com.deepdata.streamstorm.bolt.SplitStreamBolt"
+    parallelism: 1
+    
+  - id: "cut-words"
     className: "cn.com.deepdata.streamstorm.bolt.CutWordsBolt"
+    constructorArgs:
+      - ref: "analyzerJedisConf"
+      - "${keystone.url}"
+    parallelism: 10
+    
+  - id: "analyzer-inner"
+    className: "cn.com.deepdata.streamstorm.bolt.AnalyzeInnerRiskBolt"
+    constructorArgs:
+      - ref: "analyzerJedisConf"
+      - "${keystone.url}"
+    parallelism: 10
+    
+  - id: "analyzer-indreg"
+    className: "cn.com.deepdata.streamstorm.bolt.AnalyzeIndRegRiskBolt"
+    constructorArgs:
+      - ref: "analyzerJedisConf"
+      - "${keystone.url}"
+    parallelism: 10
+    
+  - id: "analyzer-macro"
+    className: "cn.com.deepdata.streamstorm.bolt.AnalyzeMacroBolt"
     constructorArgs:
       - ref: "analyzerJedisConf"
     parallelism: 10
     
-  - id: "analyzer"
-    className: "cn.com.deepdata.streamstorm.bolt.AnalyzeRegionRiskBoltskBolt"
+  - id: "analyzer-ad"
+    className: "cn.com.deepdata.streamstorm.bolt.AnalyzeAdBolt"
+    parallelism: 10
+    
+  - id: "analyzer-business"
+    className: "cn.com.deepdata.streamstorm.bolt.AnalyzeBusinessInfoBolt"
     constructorArgs:
       - ref: "analyzerJedisConf"
     parallelism: 10
@@ -71,20 +106,52 @@ streams:
     grouping:
       type: SHUFFLE
       
-  - name: "parser --> cut"
+  - name: "parser --> action-lookup"
     from: "parser"
-    to: "cut"
+    to: "action-lookup"
+    grouping:
+      type: SHUFFLE
+      
+  - name: "action-lookup --> split-stream"
+    from: "action-lookup"
+    to: "split-stream"
+    grouping:
+      type: SHUFFLE
+      
+  - name: "split-stream --> es-bolt"
+    from: "split-stream"
+    to: "es-bolt"
+    grouping:
+      type: SHUFFLE
+      streamId: None
+      
+  - name: "split-stream --> cut-words"
+    from: "split-stream"
+    to: "cut-words"
+    grouping:
+      type: SHUFFLE
+      streamId: RiskInfo
+
+  - name: "cut-words --> analyzer-inner"
+    from: "cut-words"
+    to: "analyzer-inner"
     grouping:
       type: SHUFFLE
 
-  - name: "cut --> analyzer"
-    from: "cut"
-    to: "analyzer"
+  - name: "analyzer-inner --> analyzer-indreg"
+    from: "analyzer-inner"
+    to: "analyzer-indreg"
     grouping:
       type: SHUFFLE
 
-  - name: "analyzer --> es-bolt-month"
-    from: "analyzer"
+  - name: "analyzer-indreg --> analyzer-macro"
+    from: "analyzer-indreg"
+    to: "analyzer-macro"
+    grouping:
+      type: SHUFFLE
+
+  - name: "analyzer-macro --> es-bolt-month"
+    from: "analyzer-macro"
     to: "es-bolt-month"
     grouping:
       type: SHUFFLE
@@ -94,3 +161,10 @@ streams:
     to: "es-bolt"
     grouping:
       type: SHUFFLE
+      
+  - name: "split-stream --> analyzer-business"
+    from: "split-stream"
+    to: "analyzer-business"
+    grouping:
+      type: SHUFFLE
+      streamId: BusinessInfo
