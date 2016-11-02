@@ -20,8 +20,8 @@ import java.util.Set;
 /**
  * Created by yukh on 2016/10/19
  */
-public class AnalyzeAd extends BaseRichBolt {
-    private transient static Log log = LogFactory.getLog(AnalyzeAd.class);
+public class AnalyzeAdBolt extends BaseRichBolt {
+    private transient static Log log = LogFactory.getLog(AnalyzeAdBolt.class);
     private transient DeepRichBoltHelper helper;
 
     @Override

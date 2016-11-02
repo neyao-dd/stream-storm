@@ -1,7 +1,6 @@
 package cn.com.deepdata.streamstorm.bolt;
 
 import cn.com.deepdata.commonutil.TermFrequencyInfo;
-import cn.com.deepdata.streamstorm.controller.UsrDefineWordsController;
 import cn.com.deepdata.streamstorm.entity.*;
 import cn.com.deepdata.streamstorm.util.ClientUuidUtil;
 import cn.com.deepdata.streamstorm.util.CommonUtil;
@@ -28,12 +27,14 @@ import java.util.*;
  */
 public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
     private static final Logger logger = LoggerFactory.getLogger(AnalyzeInnerRiskBolt.class);
+    private static final String keystoneRegionApi = "/keystone/api/v1/geo/area/_query";
+    private static final String keystoneIdApi = "/keystone/api/v1/company/_query?page=0&size=20000";
     private String calcType;
     private Map<Integer, Double> rWeight = new HashMap<>();
     private TermFrequencyInfo titleTfi;
     private List<TermFrequencyInfo> contentTfi;
-    private UsrDefineWordsController clientWordsCtrl;
-    private UsrDefineWordsController riskWordsCtrl;
+    private String clientWordsCtrlVersion;
+    private String riskWordsCtrlVersion;
 
     double brandScore = 0.9;
     double brandScore2 = 0.25;
@@ -46,18 +47,18 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
     private DeepRichBoltHelper helper;
     private RegionUtil region;
     private ClientUuidUtil idUtil;
-    private String regionHost;
-    private String idHost;
+    private final String regionHost;
+    private final String idHost;
 
     final double INVALID_WEIGHT = Double.MAX_VALUE;
     final String[] CT_CATE_CN = {"[品牌+]","[品牌-]", "[产品+]", "[产品-]", "[人名+]", "[人名-]", "[其它+]", "[其它-]"};
     final String[] CT_CATE_EN = {"brand", "product", "people", "other"};
     final String[] SYMBOL = {"(", ")", "（", "）", "《", "》"};
 
-    public AnalyzeInnerRiskBolt(JedisPoolConfig config, String regionHost, String idHost) {
+    public AnalyzeInnerRiskBolt(JedisPoolConfig config, String keystoneUrl) {
         super(config);
-        this.regionHost = regionHost;
-        this.idHost = idHost;
+        this.regionHost = keystoneUrl + keystoneRegionApi;
+        this.idHost = keystoneUrl + keystoneIdApi;
     }
 
     @Override
@@ -173,8 +174,8 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
     }
 
     private void init(Map<String, Object> attach) {
-        clientWordsCtrl = (UsrDefineWordsController) attach.get("clientCtrl");
-        riskWordsCtrl = (UsrDefineWordsController) attach.get("riskCtrl");
+        clientWordsCtrlVersion = (String) attach.get("clientCtrlVersion");
+        riskWordsCtrlVersion = (String) attach.get("riskCtrlVersion");
         titleTfi = (TermFrequencyInfo) attach.get("titleTermInfo");
         contentTfi = (List<TermFrequencyInfo>) attach.get("contentTermInfo");
     }
@@ -272,7 +273,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
         Map<String, Set<String>> ctByCate = new HashMap<>();
         for (String word : nature.keySet()) {
             if (nature.get(word).contains("CT") || nature.get(word).contains("nr")) {
-                Set<String> infoSet = getItemSet(RiskFields.clientTokenItemPrefixKey, word, clientWordsCtrl.version());
+                Set<String> infoSet = getItemSet(RiskFields.clientTokenItemPrefixKey, word, clientWordsCtrlVersion);
                 for (String str : infoSet) {
                     infoCT = gson.fromJson(str, TypeProvider.type_mss);
                     String cid = infoCT.get("id");
@@ -356,7 +357,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
         Map<String, String> nature = tfi.termNature;
         for (String word : nature.keySet()) {
             if (nature.get(word).contains("RT")) {
-                Set<String> infoSet = getItemSet(RiskFields.riskTokenItemPrefixKey, word, riskWordsCtrl.version());
+                Set<String> infoSet = getItemSet(RiskFields.riskTokenItemPrefixKey, word, riskWordsCtrlVersion);
                 for (String str : infoSet) {
                     infoRT = gson.fromJson(str, TypeProvider.type_mss);
                     int id = Integer.parseInt(infoRT.get("id"));
@@ -427,7 +428,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
             Map.Entry<Integer, ConcreteRisk> entry = it.next();
             int id = entry.getKey();
             ConcreteRisk cr = entry.getValue();
-            String riskItem = getItemByRedis(RiskFields.riskItemPrefixKey, String.valueOf(id), riskWordsCtrl.version());
+            String riskItem = getItemByRedis(RiskFields.riskItemPrefixKey, String.valueOf(id), riskWordsCtrlVersion);
             RiskInfo item = new Gson().fromJson(riskItem, RiskInfo.class);
             if (!validConcreteRisk(riskItem, cr) || addCTByCategory(cr, item.object, ctByCate, segNum)) {
                 it.remove();

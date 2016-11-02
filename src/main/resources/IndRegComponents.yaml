@@ -1,8 +1,0 @@
-name: "indReg-components"
-
-components:
-  - id: "analyzerIndRegConf"
-    className: "java.lang.String"
-    constructorArgs:
-      # host
-      - "${analyzer.indReg.host}"
