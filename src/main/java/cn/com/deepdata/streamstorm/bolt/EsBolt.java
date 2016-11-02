@@ -21,7 +21,6 @@ import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 import org.elasticsearch.hadoop.EsHadoopException;
 import org.elasticsearch.hadoop.rest.InitializationUtils;
-import org.elasticsearch.storm.EsSpout;
 import org.elasticsearch.storm.TupleUtils;
 import org.elasticsearch.storm.cfg.StormSettings;
 import org.elasticsearch.storm.serialization.StormTupleBytesConverter;
@@ -69,9 +68,7 @@ public class EsBolt implements IRichBolt {
 
 		StormSettings settings = new StormSettings(copy);
 		flushOnTickTuple = settings.getStormTickTupleFlush();
-
-		new EsSpout("storm/docs", "?q=me*");
-
+		org.elasticsearch.storm.EsBolt ss;
 		// trigger manual flush
 		settings.setProperty(ES_BATCH_FLUSH_MANUAL, Boolean.TRUE.toString());
 
