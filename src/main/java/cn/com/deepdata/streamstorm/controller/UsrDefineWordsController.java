@@ -64,7 +64,7 @@ public class UsrDefineWordsController {
 		return usrWords.size();
 	}
 
-	private void AddWords(Map<String, String> words) {
+	public void AddWords(Map<String, String> words) {
 		log.info("AddWords:" + words.size());
 		UsrLibraryController.ChangeNature(words,
 				UsrLibraryController.EChangeOprationType.kAddOpration);

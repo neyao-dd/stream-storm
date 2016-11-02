@@ -68,7 +68,7 @@ public class EsBolt implements IRichBolt {
 
 		StormSettings settings = new StormSettings(copy);
 		flushOnTickTuple = settings.getStormTickTupleFlush();
-
+		org.elasticsearch.storm.EsBolt ss;
 		// trigger manual flush
 		settings.setProperty(ES_BATCH_FLUSH_MANUAL, Boolean.TRUE.toString());
 

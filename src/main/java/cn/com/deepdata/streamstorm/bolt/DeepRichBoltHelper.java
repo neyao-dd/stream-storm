@@ -21,9 +21,13 @@ public class DeepRichBoltHelper {
 		_collector = collector;
 	}
 
+	// TODO: 2016/10/26  
 	public Map<String, Object> getDoc(Tuple input) {
-		if (!input.contains(fields[0]))
+		if (!input.contains(fields[0])) {
+			if (input.contains("doc"))
+				return (Map<String, Object>) input.getValueByField("doc");
 			return Maps.newHashMap();
+		}
 		Map<String, Object> doc = (Map<String, Object>) input.getValue(0);
 		if (doc.containsKey("source")
 				&& Map.class.isInstance(doc.get("source")))
@@ -31,21 +35,25 @@ public class DeepRichBoltHelper {
 		return doc;
 	}
 
+	// TODO: 2016/10/26  
 	public String getDocTitle(Tuple input) {
-		Map<String, Object> doc = getDoc(input);
-		return doc.containsKey("scc_title") && doc.get("scc_title") != null
-				&& doc.get("scc_title").toString().length() > 0 ? doc.get(
-				"scc_title").toString() : doc.containsKey("scm_title")
-				&& doc.get("scm_title") != null
-				&& doc.get("scm_title").toString().length() > 0 ? doc.get(
-				"scm_title").toString() : "";
+//		Map<String, Object> doc = getDoc(input);
+//		return doc.containsKey("scc_title") && doc.get("scc_title") != null
+//				&& doc.get("scc_title").toString().length() > 0 ? doc.get(
+//				"scc_title").toString() : doc.containsKey("scm_title")
+//				&& doc.get("scm_title") != null
+//				&& doc.get("scm_title").toString().length() > 0 ? doc.get(
+//				"scm_title").toString() : "";
+		return getDoc(input).get("scc_title").toString();
 	}
 
+	// TODO: 2016/10/26  
 	public String getDocContent(Tuple input) {
-		Map<String, Object> doc = getDoc(input);
-		return doc.containsKey("scc_content") && doc.get("scc_content") != null
-				&& doc.get("scc_content").toString().length() > 0 ? doc.get(
-				"scc_content").toString() : "";
+//		Map<String, Object> doc = getDoc(input);
+//		return doc.containsKey("scc_content") && doc.get("scc_content") != null
+//				&& doc.get("scc_content").toString().length() > 0 ? doc.get(
+//				"scc_content").toString() : "";
+		return getDoc(input).get("scc_content").toString();
 	}
 
 	public String getAction(Tuple input) {

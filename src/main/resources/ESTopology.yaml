@@ -42,7 +42,7 @@ bolts:
     parallelism: 10
     
   - id: "analyzer"
-    className: "cn.com.deepdata.streamstorm.bolt.AnalyzeRiskBolt"
+    className: "cn.com.deepdata.streamstorm.bolt.AnalyzeRegionRiskBoltskBolt"
     constructorArgs:
       - ref: "analyzerJedisConf"
     parallelism: 10

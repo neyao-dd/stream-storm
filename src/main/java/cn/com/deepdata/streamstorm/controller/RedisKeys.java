@@ -1,6 +1,6 @@
 package cn.com.deepdata.streamstorm.controller;
 
-public class RedisKeys {
+public abstract class RedisKeys {
 	public enum Type {
 		kClient, kNetRisk, kIndRegRisk, kAd
 	}
@@ -14,15 +14,16 @@ public class RedisKeys {
 	public static RedisKeys CreateRedisKey(Type type) {
 		switch (type) {
 		case kClient:
-			return new ClientRedisKeys();
+			return ClientRedisKeys.getInstance();
 		case kNetRisk:
-			return new NetRiskRedisKeys();
+			return NetRiskRedisKeys.getInstance();
 		case kIndRegRisk:
-			return new IndRegRiskRedisKeys();
+			return IndRegRiskRedisKeys.getInstance();
 		case kAd:
-			return new AdRedisKeys();
+			return AdRedisKeys.getInstance();
 		default:
 			return null;
 		}
 	}
+
 }
