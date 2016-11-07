@@ -3,7 +3,6 @@ package cn.com.deepdata.streamstorm.bolt;
 import cn.com.deepdata.commonutil.TermFrequencyInfo;
 import cn.com.deepdata.streamstorm.entity.*;
 import cn.com.deepdata.streamstorm.util.CommonUtil;
-import cn.com.deepdata.streamstorm.util.RegionUtil;
 import cn.com.deepdata.streamstorm.util.TypeProvider;
 
 import com.google.gson.Gson;
@@ -25,29 +24,28 @@ import java.util.*;
 @SuppressWarnings({"serial", "rawtypes"})
 public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
     private transient static Logger logger = LoggerFactory.getLogger(AnalyzeIndRegRiskBolt.class);
-    private static final String keystoneRegionApi = "/keystone/api/v1/geo/area/_query";
+//    private static final String keystoneRegionApi = "/keystone/api/v1/geo/area/_query";
     private transient DeepRichBoltHelper helper;
-    private Map<String, Map<Integer, Integer>> regionAlias;
-    private Map<Integer, Region> regionDetail;
+//    private Map<String, Map<Integer, Integer>> regionAlias;
+//    private Map<Integer, Region> regionDetail;
     Map<String, Double> regionInfo;
-    private RegionUtil regionUtil;
-    private final String host;
+//    private RegionUtil regionUtil;
+//    private final String host;
     List<TermFrequencyInfo> contentTfi;
     TermFrequencyInfo titleTfi;
     String indRegCtrlVersion;
 
-    public AnalyzeIndRegRiskBolt(JedisPoolConfig config, String keystoneUrl) {
+    public AnalyzeIndRegRiskBolt(JedisPoolConfig config) {
         super(config);
-        this.host = keystoneUrl + keystoneRegionApi;
     }
 
     @Override
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
         super.prepare(map, topologyContext, collector);
         try {
-            regionUtil = new RegionUtil(host);
-            regionAlias = regionUtil.getRegionAlias();
-            regionDetail = regionUtil.getRegionDetail();
+//            regionUtil = new RegionUtil(host);
+//            regionAlias = regionUtil.getRegionAlias();
+//            regionDetail = regionUtil.getRegionDetail();
             helper = new DeepRichBoltHelper(outputCollector);
             regionInfo = new HashMap<>();
         }catch (Exception e) {
@@ -70,7 +68,7 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
                 return;
             }
             IndRegRisk indRegRisk = Analyze(title, content);
-            logger.debug(new Gson().toJson(indRegRisk));
+            logger.info(new Gson().toJson(indRegRisk));
             // TODO: 2016/10/25
             helper.emitDoc(input, doc, true);
 //            helper.emitAttach(input, attach, true);
@@ -346,12 +344,12 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
         try {
             int pid;
             double son = regionInfo.get(regionName);
-            while ((pid = regionUtil.getParentId(id)) != 0) {
+            while ((pid = getParentId(id)) != 0) {
                 if (result.containsKey(pid))
                     result.put(pid, son / 2 + result.get(pid));
                 else {
                     result.put(pid, son / 2);
-                    analyzedRegion.add(regionUtil.getRegionName(pid));
+                    analyzedRegion.add(getRegionName(pid));
                 }
                 id = pid;
                 son /= 2;
@@ -359,6 +357,51 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
         } catch (Exception e) {
             logger.error(CommonUtil.getExceptionString(e));
         }
+    }
+
+    // TODO: 2016/11/3 考虑并发修改
+    private String getRegionName(int id) {
+        Map<String, Object> info = getRegionDetail(id);
+        return info.get("name").toString();
+    }
+
+    private int getParentId (int id) {
+        Map<String, Object> info = getRegionDetail(id);
+        int pid;
+        try {
+            pid = Integer.parseInt(info.get("parent_id").toString());
+        } catch (Exception e) {
+            pid = 0;
+        }
+        return pid;
+    }
+
+    private List<Integer> getId(String name) {
+        return getRegionIdByAlias(name);
+    }
+
+    private Map<String, Object> getRegionDetail(int id) {
+        JedisCommands jedisCommands = getInstance();
+        String sInfo = jedisCommands.get(RiskFields.REGION_ITEM_INFO_PREFIX + id);
+        Map<String, Object> info = new Gson().fromJson(sInfo, TypeProvider.type_mso);
+        returnInstance(jedisCommands);
+        return info;
+    }
+
+    private List<Integer> getRegionIdByAlias(String alias) {
+        JedisCommands jedisCommands = getInstance();
+        logger.info(RiskFields.REGION_TERM_INFOS_PREFIX + alias);
+        String sInfo = jedisCommands.get(RiskFields.REGION_TERM_INFOS_PREFIX + alias);
+        List<String> ids = new Gson().fromJson(sInfo, TypeProvider.type_ls);
+        returnInstance(jedisCommands);
+        return convertList(ids);
+    }
+
+    // TODO: 2016/11/3 try catch
+    private List<Integer> convertList(List<String> list) {
+        List<Integer> newList = new ArrayList<>();
+        list.stream().forEach(s -> newList.add(Integer.parseInt(s)));
+        return newList;
     }
 
     private List<Region> calcRegionRelevancy(Map<String, Double> regionInfo) {
@@ -370,18 +413,17 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
 
         for (Map.Entry<String, Double> ri : regionInfo.entrySet()) {
             String regionName = ri.getKey();
-            Map<Integer, Integer> idMapping = regionAlias.get(regionName);
-            for (Map.Entry<Integer, Integer> idm : idMapping.entrySet()) {
+            List<Integer> ids = getId(regionName);
+            for (int id : ids) {
                 try {
-                    int pid = idm.getValue();
+                    int pid = getParentId(id);
                     String pRegion;
-                    int id = idm.getKey();
                     result.put(id, ri.getValue());
                     if (pid != 0)
-                        pRegion = regionUtil.getRegionName(pid);
+                        pRegion = getRegionName(pid);
                     else
                         continue;
-                    if (idMapping.size() > 1) {
+                    if (ids.size() > 1) {
                         if (regionInfo.containsKey(pRegion))
                             calcFrequency(result, analyzedRegion, regionName, id);
                     } else
@@ -400,13 +442,14 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
 
         for (Map.Entry<Integer, Double> r : result.entrySet()) {
             try {
-                Region region = regionDetail.get(r.getKey()).clone();
+//                Region region = regionDetail.get(r.getKey()).clone();
+                Region region = new Region(getRegionDetail(r.getKey()));
                 if (analyzedRegion.contains(region.sca_region))
                     region.bna_analyze = true;
                 region.dna_score = r.getValue() / denominator;
                 list.add(region);
             } catch (Exception e) {
-                logger.error(r.getKey() + ", " + regionDetail.containsKey(r.getKey()));
+                logger.error("error id:" + r.getKey());
                 e.printStackTrace();
             }
         }

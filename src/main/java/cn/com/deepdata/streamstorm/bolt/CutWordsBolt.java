@@ -2,11 +2,8 @@ package cn.com.deepdata.streamstorm.bolt;
 
 import cn.com.deepdata.commonutil.AnsjTermAnalyzer;
 import cn.com.deepdata.commonutil.TermFrequencyInfo;
-import cn.com.deepdata.streamstorm.controller.RedisKeys;
-import cn.com.deepdata.streamstorm.controller.UsrDefineWordsController;
-import cn.com.deepdata.streamstorm.entity.RiskFields;
-import cn.com.deepdata.streamstorm.util.RegionUtil;
-
+import cn.com.deepdata.commonutil.UsrLibraryController;
+import cn.com.deepdata.streamstorm.util.CommonUtil;
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 
@@ -22,55 +19,67 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 
 import redis.clients.jedis.JedisCommands;
-
 import java.util.*;
+import static cn.com.deepdata.streamstorm.entity.RiskFields.*;
 
 @SuppressWarnings({"serial", "rawtypes"})
 public class CutWordsBolt extends AbstractRedisBolt {
     private transient static Log logger = LogFactory.getLog(CutWordsBolt.class);
-    private static final String keystoneRegionApi = "/keystone/api/v1/geo/area/_query";
     private transient DeepRichBoltHelper helper;
     private transient static AnsjTermAnalyzer ansjAnalyzer;
     private transient static final byte[] syncWordsLock = new byte[0];
-    private transient static Long lastSyncTime;
-    private transient static UsrDefineWordsController clientWordsCtrl;
-    private transient static UsrDefineWordsController riskWordsCtrl;
-    private transient static UsrDefineWordsController indRegRiskWordsCtrl;
-    private transient static UsrDefineWordsController adWordsCtrl;
-    private String host;
+    private long lastSyncTime = 0L;
+    private String riskLastUpdate = "";
+    private String clientLastUpdate = "";
+    private String regionLastUpdate = "";
 
-    public CutWordsBolt(JedisPoolConfig config, String keystoneUrl) {
+    public CutWordsBolt(JedisPoolConfig config) {
         super(config);
-        this.host = keystoneUrl + keystoneRegionApi;
     }
 
-    public CutWordsBolt(JedisClusterConfig config, String host) {
+    public CutWordsBolt(JedisClusterConfig config) {
         super(config);
-        this.host = host;
     }
 
     @Override
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector collector) {
         super.prepare(map, topologyContext, collector);
         helper = new DeepRichBoltHelper(collector);
-        RegionUtil region = new RegionUtil(host);
-        Map<String, Map<Integer, Integer>> regionAlias = region.getRegionAlias();
         ansjAnalyzer = new AnsjTermAnalyzer();
-        lastSyncTime = 0L;
-        clientWordsCtrl = new UsrDefineWordsController(
-                RedisKeys.CreateRedisKey(RedisKeys.Type.kClient), "CT");
-        riskWordsCtrl = new UsrDefineWordsController(
-                RedisKeys.CreateRedisKey(RedisKeys.Type.kNetRisk), "RT");
-        indRegRiskWordsCtrl = new UsrDefineWordsController(
-                RedisKeys.CreateRedisKey(RedisKeys.Type.kIndRegRisk), "risk");
-        adWordsCtrl = new UsrDefineWordsController(
-                RedisKeys.CreateRedisKey(RedisKeys.Type.kAd), "gg");
         LoadWords();
-        Map<String, String> regionWord = new HashMap<>();
-        for (String name : regionAlias.keySet()) {
-            regionWord.put(name, "DS");
+    }
+
+    private String loadWords(String key, String updateKey, String nature) {
+        JedisCommands jedisCommands = null;
+        try {
+            jedisCommands = getInstance();
+            addWordProperty(jedisCommands.smembers(key), nature);
+            return jedisCommands.get(updateKey);
+        } catch (Exception e) {
+            logger.error("load word error..." + CommonUtil.getExceptionString(e));
+        } finally {
+            if (null != jedisCommands)
+                returnInstance(jedisCommands);
         }
-        indRegRiskWordsCtrl.AddWords(regionWord);
+        return null;
+    }
+
+    // TODO: 2016/11/7 更新后有个比较的过程!!!
+    private void addWordProperty(Set<String> words, String nature) {
+        if (validSet(words) || validString(nature)) {
+            logger.error("word nature error, add word fail...");
+        }
+        Map<String, String> wordsNature = new HashMap<>();
+        words.stream().forEach(word -> wordsNature.put(word, nature));
+        UsrLibraryController.ChangeNature(wordsNature, UsrLibraryController.EChangeOprationType.kAddOpration);
+    }
+
+    private boolean validSet(Set set) {
+        return !(null == set || !set.isEmpty());
+    }
+
+    private boolean validString(String str) {
+        return !(null == str || str.length() == 0);
     }
 
     private void LoadWords() {
@@ -81,21 +90,20 @@ public class CutWordsBolt extends AbstractRedisBolt {
         }
     }
 
+    // TODO: 2016/11/7
+//    public boolean needUpdate(String key, long lastUpdate) {
+//
+//    }
+
     public void DoLoadWords() {
-        JedisCommands jedisCommands = null;
-        try {
-            jedisCommands = getInstance();
-            clientWordsCtrl.load(jedisCommands);
-            riskWordsCtrl.load(jedisCommands);
-            indRegRiskWordsCtrl.load(jedisCommands);
-            adWordsCtrl.loadRedisWordsWithNoVersion(jedisCommands,
-                    RiskFields.adTokenSetKey);
-        } finally {
-            if (jedisCommands != null) {
-                returnInstance(jedisCommands);
-            }
-        }
+        riskLastUpdate = validTime(riskLastUpdate, loadWords(RISK_TERMS_SET, RISK_LAST_UPDATE_TIME, "RT"));
+        clientLastUpdate = validTime(clientLastUpdate, loadWords(CLIENT_TERMS_SET, CLIENT_LAST_UPDATE_TIME, "CT"));
+        regionLastUpdate = validTime(regionLastUpdate, loadWords(REGION_TERMS_SET, REGION_LAST_UPDATE_TIME, "DS"));
         lastSyncTime = System.currentTimeMillis();
+    }
+
+    private String validTime(String oldTime, String newTime) {
+        return newTime == null ? oldTime : newTime;
     }
 
     private String deleteStartSpace(String content) {
@@ -155,9 +163,6 @@ public class CutWordsBolt extends AbstractRedisBolt {
         attach.put("titleTermInfo", titleTermInfo);
         attach.put("contentRaw", contentRaw);
         attach.put("contentTermInfo", combine(contentTermInfo, contentRaw));
-        attach.put("clientCtrlVersion", clientWordsCtrl.version());
-        attach.put("riskCtrlVersion", riskWordsCtrl.version());
-        attach.put("indRegCtrlVersion", indRegRiskWordsCtrl.version());
         helper.emitAttach(input, attach, true);
         helper.ack(input);
     }
