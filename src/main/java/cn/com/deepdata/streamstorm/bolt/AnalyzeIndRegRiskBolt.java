@@ -72,9 +72,10 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
             // TODO: 2016/10/25
             helper.emitDoc(input, doc, true);
 //            helper.emitAttach(input, attach, true);
-            helper.ack(input);
         } catch (Exception e) {
             logger.error(CommonUtil.getExceptionString(e));
+        } finally {
+            helper.ack(input);
         }
     }
 

@@ -34,6 +34,7 @@ public class SplitStreamBolt extends BaseRichBolt {
 
 		Action actionObj = (Action) attach.get("action");
 		helper.emit(input, true, actionObj.analyzeType.name());
+		helper.ack(input);
 	}
 
 	@Override

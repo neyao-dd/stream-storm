@@ -1,7 +1,9 @@
 package cn.com.deepdata.streamstorm.bolt;
 
 import cn.com.deepdata.commonutil.TermFrequencyInfo;
+
 import com.google.gson.Gson;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.storm.task.OutputCollector;
@@ -10,6 +12,7 @@ import org.apache.storm.topology.BasicOutputCollector;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseBasicBolt;
 import org.apache.storm.topology.base.BaseRichBolt;
+import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 
 import java.util.HashSet;
@@ -61,6 +64,6 @@ public class AnalyzeAdBolt extends BaseRichBolt {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-
+    	outputFieldsDeclarer.declare(new Fields(DeepRichBoltHelper.fields));
     }
 }
