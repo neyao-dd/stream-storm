@@ -8,6 +8,7 @@ import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
 import com.google.common.collect.Maps;
+import static cn.com.deepdata.streamstorm.util.CommonUtil.*;
 
 @SuppressWarnings("unchecked")
 public class DeepRichBoltHelper {
@@ -35,26 +36,27 @@ public class DeepRichBoltHelper {
 		return doc;
 	}
 
-	// TODO: 2016/10/26
 	public String getDocTitle(Tuple input) {
-		// Map<String, Object> doc = getDoc(input);
-		// return doc.containsKey("scc_title") && doc.get("scc_title") != null
-		// && doc.get("scc_title").toString().length() > 0 ? doc.get(
-		// "scc_title").toString() : doc.containsKey("scm_title")
-		// && doc.get("scm_title") != null
-		// && doc.get("scm_title").toString().length() > 0 ? doc.get(
-		// "scm_title").toString() : "";
-		return getDoc(input).get("scc_title").toString();
+		Map<String, Object> doc = getDoc(input);
+		String scc_title = getValue(doc, "scc_title");
+		String scm_title = getValue(doc, "scm_title");
+		return validString(scc_title) ? scc_title : (validString(scm_title) ? scm_title : "");
+		// TODO: 2016/11/8 for test to delete
+//		return getDoc(input).get("scc_title").toString();
 	}
 
-	// TODO: 2016/10/26
+	private String getValue(Map<String, Object> map, String key) {
+		if (map.containsKey(key) && null != map.get(key))
+			return map.get(key).toString();
+		return null;
+	}
+
 	public String getDocContent(Tuple input) {
-		// Map<String, Object> doc = getDoc(input);
-		// return doc.containsKey("scc_content") && doc.get("scc_content") !=
-		// null
-		// && doc.get("scc_content").toString().length() > 0 ? doc.get(
-		// "scc_content").toString() : "";
-		return getDoc(input).get("scc_content").toString();
+		Map<String, Object> doc = getDoc(input);
+		String scc_content = getValue(doc, "scc_content");
+		return validString(scc_content) ? scc_content : "";
+		// TODO: 2016/11/8 for test to delete
+//		return getDoc(input).get("scc_content").toString();
 	}
 
 	public String getAction(Tuple input) {

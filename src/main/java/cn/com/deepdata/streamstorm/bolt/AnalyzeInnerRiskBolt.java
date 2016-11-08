@@ -33,6 +33,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
     private Map<Integer, Double> rWeight = new HashMap<>();
     private TermFrequencyInfo titleTfi;
     private List<TermFrequencyInfo> contentTfi;
+    private Map<Integer, String> idMapping = new HashMap<>();
 //    private String clientWordsCtrlVersion;
 //    private String riskWordsCtrlVersion;
 
@@ -136,7 +137,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
                 double maxRiskScoreV2 = 0.;
                 ClientScore cs = new ClientScore();
                 cs.setIna_id(id);
-                cs.setSnc_uuid(idUtil.getUuid(id));
+                cs.setSnc_uuid(getUuid(id));
                 cs.setDna_score(totalCliScore.get(id));
                 if (cs.getDna_score() >= 0.9) {
                     for (DescRiskScore drs : desRiskScore) {
@@ -225,7 +226,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
                     maxScore = Math.max(maxScore, score);
                 }
                 drs.setDna_score(Math.min(100., maxScore));
-                drs.setSnc_uuid(idUtil.getUuid(cid));
+                drs.setSnc_uuid(getUuid(cid));
                 if (!rWeight.isEmpty() && rWeight.containsKey(rid))
                     drs.setDna_score_v2(Math.min(100., maxScore) * rWeight.get(rid));
                 desRiskScore.add(drs);
@@ -246,8 +247,8 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
             Map<Integer, ConcreteRisk> rtInfo = analyzeSegmentRT(ctByCate, segNum);
             if (!rtInfo.isEmpty()) {
                 List<ConcreteRisk> result = riskItemByClient(rtInfo, desCli, client, clientScore, segNum);
-                if (segNum == 8)
-                    logger.info("@@@@@@@@@" + new Gson().toJson(result));
+//                if (segNum == 8)
+//                    logger.info("@@@@@@@@@" + new Gson().toJson(result));
                 if (!result.isEmpty())
                     sb.append("segment:").append(segNum).append("\n").append(convertResult(result));
             }
@@ -267,14 +268,18 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
         for (String word : nature.keySet()) {
             if (nature.get(word).contains("CT") || nature.get(word).contains("nr")) {
                 Set<String> infoSet = getItemSet(RiskFields.CLIENT_TERM_INFOS_PREFIX, word);
+                if (infoSet == null)
+                    continue;
                 for (String str : infoSet) {
                     infoCT = gson.fromJson(str, TypeProvider.type_mss);
                     String id = infoCT.get("id");
                     String raw = infoCT.get("raw");
                     String type = infoCT.get("type");
+                    String uuid = getClientInfo(RiskFields.CLIENT_ITEM_INFO_PREFIX, Integer.parseInt(id)).get("uuid").toString();
                     if (!wordExisted(raw, tfi) || !validClientType(type))
                         continue;
                     // TODO: 2016/10/21 结构简单处理
+                    idMapping.put(Integer.parseInt(id), uuid);
                     addMap(ctByCate, type, raw);
                     addMap(client, raw, id);
                     clientScore.put(id + " " + raw, getClientScore(infoCT));
@@ -378,7 +383,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
             }
         }
         // TODO: 2016/10/28 to delete
-        logger.info("######riskInfo:{}" , gson.toJson(riskInfo));
+//        logger.info("######riskInfo:{}" , gson.toJson(riskInfo));
     }
 
     private void addRisk(Map<Integer, ConcreteRisk> riskInfo, String type, String raw, int count, int id, double weight) {
@@ -417,15 +422,13 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
     }
 
     private void rtHandler(Map<Integer, ConcreteRisk> riskInfo, Map<String, Set<String>> ctByCate, int segNum) {
-//        if (segNum != 8)
-//            return;
         double weight = segNum > 1 ? 1. : segNum == 1 ? 1.2 : 1.5;
         Iterator<Map.Entry<Integer, ConcreteRisk>> it = riskInfo.entrySet().iterator();
         while (it.hasNext()) {
             Map.Entry<Integer, ConcreteRisk> entry = it.next();
             int id = entry.getKey();
             ConcreteRisk cr = entry.getValue();
-            String riskItem = getItemByRedis(RiskFields.RISK_TERM_INFOS_PREFIX, String.valueOf(id));
+            String riskItem = getItemByRedis(RiskFields.RISK_ITEM_INFO_PREFIX, String.valueOf(id));
             RiskInfo item = new Gson().fromJson(riskItem, RiskInfo.class);
             if (!validConcreteRisk(riskItem, cr) || addCTByCategory(cr, item.object, ctByCate, segNum)) {
                 it.remove();
@@ -437,8 +440,6 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
             riskInfo.put(id, cr);
         }
     }
-
-
 
     private boolean validConcreteRisk(String riskItem, ConcreteRisk cr) {
         return !(null == riskItem || null == cr || cr.getRisk().isEmpty() || cr.getBehavior().isEmpty()) || validLocation(riskItem, cr);
@@ -543,7 +544,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
                         cr.setWeight(rtInfo.get(rid).getWeight());
                         if (!rWeight.isEmpty() && rWeight.containsKey(rid))
                             cr.setRiskWeight(rWeight.get(rid));
-                        cr.setUuid(idUtil.getUuid(Integer.parseInt(cid)));
+                        cr.setUuid(getUuid(Integer.parseInt(cid)));
                         double score = clientScore.get(cr.getClientId() + " " + wordObj);
                         cr.setClientScore(score);
 
@@ -566,6 +567,12 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
         return riskItem(merge, desCli, segNum);
     }
 
+    private String getUuid(int id) {
+        if (idMapping.containsKey(id))
+            return idMapping.get(id);
+        return "";
+    }
+
     private List<ConcreteRisk> riskItem(Map<String, ConcreteRisk> merge,
                                         Map<Integer, Map<Integer, List<Double>>> desCli, int segNum) {
         if (segNum != 8)
@@ -575,10 +582,11 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
         for (Map.Entry<String, ConcreteRisk> entry : merge.entrySet()) {
             ConcreteRisk cr = entry.getValue();
             double score = calRiskScoreBySentence(cr, tfi.termOffsets);
-            logger.info("%%%%%:" + new Gson().toJson(cr));
+            // TODO: 2016/11/8 delete
+//            logger.info("%%%%%:" + new Gson().toJson(cr));
             score = numberFormat(score);
             score *= cr.getClientScore();
-            logger.info("score3 :" + score + ", client: " + cr.getClientScore() + ", segNum:" + segNum);
+//            logger.info("score3 :" + score + ", client: " + cr.getClientScore() + ", segNum:" + segNum);
             cr.setScore(Math.min(100., score));
             cr.setScore_v2(Math.min(100., score * cr.getRiskWeight()));
             if (validScore(cr.getScore()))
@@ -963,9 +971,28 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
         return true;
     }
 
-    private Set<String> getItemSet(String query, String word) {
-        String info = getItemByRedis(query, word);
-        if (null == info || 0 == info.length())
+    // TODO: 2016/11/8 和下面统一
+    private Map<String, Object> getClientInfo(String key, int id) {
+        if (validString(key) && validClientId(id)) {
+            String info = getItemByRedis(key, String.valueOf(id));
+            if (validString(info))
+                return new Gson().fromJson(info, TypeProvider.type_mso);
+        }
+        return new HashMap<>();
+    }
+
+    private boolean validString(String s) {
+        return !(s == null || s.length() == 0);
+    }
+
+    // TODO: 2016/11/8 其他附加条件
+    private boolean validClientId(int id) {
+        return id >= 0;
+    }
+
+    private Set<String> getItemSet(String key, String word) {
+        String info = getItemByRedis(key, word);
+        if (!validString(info))
             return new HashSet<>();
         return new Gson().fromJson(info, TypeProvider.type_ss);
     }

@@ -21,4 +21,8 @@ public class CommonUtil {
             path = path.substring(0, path.lastIndexOf("/"));
         return path.substring(0, path.lastIndexOf("/") + 1);
     }
+
+    public static boolean validString(String s) {
+        return !(s == null || s.length() == 0);
+    }
 }

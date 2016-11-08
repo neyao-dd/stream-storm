@@ -7,8 +7,6 @@ import cn.com.deepdata.streamstorm.util.CommonUtil;
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.storm.redis.bolt.AbstractRedisBolt;
 import org.apache.storm.redis.common.config.JedisClusterConfig;
 import org.apache.storm.redis.common.config.JedisPoolConfig;
@@ -18,13 +16,15 @@ import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import redis.clients.jedis.JedisCommands;
 import java.util.*;
 import static cn.com.deepdata.streamstorm.entity.RiskFields.*;
 
 @SuppressWarnings({"serial", "rawtypes"})
 public class CutWordsBolt extends AbstractRedisBolt {
-    private transient static Log logger = LogFactory.getLog(CutWordsBolt.class);
+    private transient static Logger logger = LoggerFactory.getLogger(CutWordsBolt.class);
     private transient DeepRichBoltHelper helper;
     private transient static AnsjTermAnalyzer ansjAnalyzer;
     private transient static final byte[] syncWordsLock = new byte[0];
@@ -66,7 +66,9 @@ public class CutWordsBolt extends AbstractRedisBolt {
 
     // TODO: 2016/11/7 更新后有个比较的过程!!!
     private void addWordProperty(Set<String> words, String nature) {
-        if (validSet(words) || validString(nature)) {
+        if (!validSet(words))
+            logger.error("words set is null, add word fail...");
+        if (!validString(nature)) {
             logger.error("word nature error, add word fail...");
         }
         Map<String, String> wordsNature = new HashMap<>();
@@ -75,7 +77,7 @@ public class CutWordsBolt extends AbstractRedisBolt {
     }
 
     private boolean validSet(Set set) {
-        return !(null == set || !set.isEmpty());
+        return !(null == set || set.isEmpty());
     }
 
     private boolean validString(String str) {
@@ -89,11 +91,6 @@ public class CutWordsBolt extends AbstractRedisBolt {
             DoLoadWords();
         }
     }
-
-    // TODO: 2016/11/7
-//    public boolean needUpdate(String key, long lastUpdate) {
-//
-//    }
 
     public void DoLoadWords() {
         riskLastUpdate = validTime(riskLastUpdate, loadWords(RISK_TERMS_SET, RISK_LAST_UPDATE_TIME, "RT"));
