@@ -6,7 +6,6 @@ import cn.com.deepdata.commonutil.UsrLibraryController;
 import cn.com.deepdata.streamstorm.util.CommonUtil;
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
-
 import org.apache.storm.redis.bolt.AbstractRedisBolt;
 import org.apache.storm.redis.common.config.JedisClusterConfig;
 import org.apache.storm.redis.common.config.JedisPoolConfig;
@@ -15,12 +14,14 @@ import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.JedisCommands;
+
 import java.util.*;
+
 import static cn.com.deepdata.streamstorm.entity.RiskFields.*;
+import static cn.com.deepdata.streamstorm.util.CommonUtil.validString;
 
 @SuppressWarnings({"serial", "rawtypes"})
 public class CutWordsBolt extends AbstractRedisBolt {
@@ -29,9 +30,12 @@ public class CutWordsBolt extends AbstractRedisBolt {
     private transient static AnsjTermAnalyzer ansjAnalyzer;
     private transient static final byte[] syncWordsLock = new byte[0];
     private long lastSyncTime = 0L;
-    private String riskLastUpdate = "";
-    private String clientLastUpdate = "";
-    private String regionLastUpdate = "";
+    private String riskLastUpdate;
+    private String clientLastUpdate;
+    private String regionLastUpdate;
+    private Set<String> riskWords = new HashSet<>();
+    private Set<String> clientWords = new HashSet<>();
+    private Set<String> regionWords = new HashSet<>();
 
     public CutWordsBolt(JedisPoolConfig config) {
         super(config);
@@ -49,23 +53,47 @@ public class CutWordsBolt extends AbstractRedisBolt {
         LoadWords();
     }
 
-    private String loadWords(String key, String updateKey, String nature) {
+    private String loadWords(Set<String> localWords, String key, String updateTimeKey, String lastUpdateTime, String nature) {
         JedisCommands jedisCommands = null;
         try {
             jedisCommands = getInstance();
-            addWordProperty(jedisCommands.smembers(key), nature);
-            return jedisCommands.get(updateKey);
+            String redisLastUpdate = jedisCommands.get(updateTimeKey);
+            if (inValidTime(lastUpdateTime)) {
+                localWords.addAll(jedisCommands.smembers(key));
+                changeWordNature(localWords, nature, UsrLibraryController.EChangeOprationType.kAddOpration);
+            } else if (needUpdate(redisLastUpdate, lastUpdateTime)) {
+                Set<String> remoteWords = jedisCommands.smembers(key);
+                Set<String> remoteMore = diffSet(remoteWords, localWords);
+                Set<String> remoteLess = diffSet(localWords, remoteWords);
+                changeWordNature(remoteMore, nature, UsrLibraryController.EChangeOprationType.kAddOpration);
+                changeWordNature(remoteLess, nature, UsrLibraryController.EChangeOprationType.kDeleteOpration);
+            }
+            return redisLastUpdate;
         } catch (Exception e) {
             logger.error("load word error..." + CommonUtil.getExceptionString(e));
         } finally {
             if (null != jedisCommands)
                 returnInstance(jedisCommands);
         }
-        return null;
+        return lastUpdateTime;
     }
 
-    // TODO: 2016/11/7 更新后有个比较的过程!!!
-    private void addWordProperty(Set<String> words, String nature) {
+    private Set<String> diffSet(Set<String> s1, Set<String> s2) {
+        Set<String> diff = new HashSet<>();
+        diff.addAll(s1);
+        diff.removeAll(s2);
+        return diff;
+    }
+
+    private boolean needUpdate(String remote, String local) {
+        return !remote.equals(local);
+    }
+
+    private boolean inValidTime(String time) {
+        return !validString(time);
+    }
+
+    private void changeWordNature(Set<String> words, String nature, UsrLibraryController.EChangeOprationType type) {
         if (!validSet(words))
             logger.error("words set is null, add word fail...");
         if (!validString(nature)) {
@@ -73,15 +101,11 @@ public class CutWordsBolt extends AbstractRedisBolt {
         }
         Map<String, String> wordsNature = new HashMap<>();
         words.stream().forEach(word -> wordsNature.put(word, nature));
-        UsrLibraryController.ChangeNature(wordsNature, UsrLibraryController.EChangeOprationType.kAddOpration);
+        UsrLibraryController.ChangeNature(wordsNature, type);
     }
 
     private boolean validSet(Set set) {
         return !(null == set || set.isEmpty());
-    }
-
-    private boolean validString(String str) {
-        return !(null == str || str.length() == 0);
     }
 
     private void LoadWords() {
@@ -93,14 +117,22 @@ public class CutWordsBolt extends AbstractRedisBolt {
     }
 
     public void DoLoadWords() {
-        riskLastUpdate = validTime(riskLastUpdate, loadWords(RISK_TERMS_SET, RISK_LAST_UPDATE_TIME, "RT"));
-        clientLastUpdate = validTime(clientLastUpdate, loadWords(CLIENT_TERMS_SET, CLIENT_LAST_UPDATE_TIME, "CT"));
-        regionLastUpdate = validTime(regionLastUpdate, loadWords(REGION_TERMS_SET, REGION_LAST_UPDATE_TIME, "DS"));
+        loadClientWords();
+        loadRiskWords();
+        loadRegionWords();
         lastSyncTime = System.currentTimeMillis();
     }
 
-    private String validTime(String oldTime, String newTime) {
-        return newTime == null ? oldTime : newTime;
+    private void loadClientWords() {
+        clientLastUpdate = loadWords(clientWords, CLIENT_TERMS_SET, CLIENT_LAST_UPDATE_TIME, clientLastUpdate, "CT");
+    }
+
+    private void loadRiskWords() {
+        riskLastUpdate = loadWords(riskWords, RISK_TERMS_SET, RISK_LAST_UPDATE_TIME, riskLastUpdate, "RT");
+    }
+
+    private void loadRegionWords() {
+        regionLastUpdate = loadWords(regionWords, REGION_TERMS_SET, REGION_LAST_UPDATE_TIME, regionLastUpdate, "DS");
     }
 
     private String deleteStartSpace(String content) {
@@ -164,7 +196,7 @@ public class CutWordsBolt extends AbstractRedisBolt {
         helper.ack(input);
     }
 
-    private List<TermFrequencyInfo> combine (List<List<String>> tokens, List<List<String>> content) {
+    private List<TermFrequencyInfo> combine(List<List<String>> tokens, List<List<String>> content) {
         Gson gson = new Gson();
         int position = 0;
         List<TermFrequencyInfo> list = new ArrayList<>();
@@ -218,8 +250,7 @@ public class CutWordsBolt extends AbstractRedisBolt {
             if (map.containsKey(word)) {
                 List<Integer> pos = map.get(word);
                 old.get(word).stream().forEach(p -> pos.add(p + position));
-            }
-            else {
+            } else {
                 List<Integer> pos = new ArrayList<>();
                 old.get(word).stream().forEach(p -> pos.add(p + position));
                 map.put(word, pos);
