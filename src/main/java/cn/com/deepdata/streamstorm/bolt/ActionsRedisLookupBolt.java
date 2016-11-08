@@ -22,8 +22,7 @@ import redis.clients.jedis.JedisCommands;
 
 @SuppressWarnings({ "serial", "rawtypes" })
 public class ActionsRedisLookupBolt extends AbstractRedisBolt {
-	private transient static Log log = LogFactory
-			.getLog(DuplicateFilterBolt.class);
+	private transient static Log log = LogFactory.getLog(DuplicateFilterBolt.class);
 	private transient DeepRichBoltHelper helper;
 
 	public ActionsRedisLookupBolt(JedisPoolConfig config) {
@@ -37,8 +36,7 @@ public class ActionsRedisLookupBolt extends AbstractRedisBolt {
 	}
 
 	@Override
-	public void prepare(Map map, TopologyContext topologyContext,
-			OutputCollector collector) {
+	public void prepare(Map map, TopologyContext topologyContext, OutputCollector collector) {
 		super.prepare(map, topologyContext, collector);
 		helper = new DeepRichBoltHelper(collector);
 	}
@@ -61,19 +59,14 @@ public class ActionsRedisLookupBolt extends AbstractRedisBolt {
 				String key = "flume_action_" + action;
 				Map<String, String> info = jedisCommands.hgetAll(key);
 				if (!info.containsKey("analyze_type")) {
-					if (info.containsKey("need_analyze")
-							&& Boolean.parseBoolean(info.get("need_analyze"))) {
+					if (info.containsKey("need_analyze") && Boolean.parseBoolean(info.get("need_analyze"))) {
 						info.put("analyze_type", "RiskInfo");
 					} else {
 						info.put("analyze_type", "None");
 					}
 				}
-				actionObj = new Action(action, Boolean.parseBoolean(info
-						.get("url_dedup")), info.get("dedup_mode"),
-						info.get("analyze_type"), info.get("index_name"),
-						info.get("index_type"));
-				jedisCommands.hset(key, "analyze_type",
-						info.get("analyze_type"));
+				actionObj = new Action(action, info.get("dedup_type"), info.get("analyze_type"), info.get("index_name"), info.get("index_type"));
+				jedisCommands.hset(key, "analyze_type", info.get("analyze_type"));
 				jedisCommands.hdel(key, "need_analyze");
 			} else if (ActionController.actions.containsKey(action)) {
 				actionObj = ActionController.actions.get(action);

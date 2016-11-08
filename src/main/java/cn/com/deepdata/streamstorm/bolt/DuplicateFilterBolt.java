@@ -19,11 +19,11 @@ import com.google.gson.Gson;
 
 import cn.com.deepdata.streamstorm.controller.Action;
 import cn.com.deepdata.streamstorm.controller.BloomFilterController;
+import cn.com.deepdata.streamstorm.controller.EDeDupType;
 
 @SuppressWarnings({ "serial", "rawtypes" })
 public class DuplicateFilterBolt extends BaseRichBolt {
-	private transient static Log log = LogFactory
-			.getLog(DuplicateFilterBolt.class);
+	private transient static Log log = LogFactory.getLog(DuplicateFilterBolt.class);
 	private JedisPoolConfig jedisPoolConfig;
 	private transient JedisPool pool;
 	private transient DeepRichBoltHelper helper;
@@ -35,33 +35,29 @@ public class DuplicateFilterBolt extends BaseRichBolt {
 	}
 
 	@Override
-	public void prepare(Map map, TopologyContext topologyContext,
-			OutputCollector collector) {
+	public void prepare(Map map, TopologyContext topologyContext, OutputCollector collector) {
 		helper = new DeepRichBoltHelper(collector);
-		pool = new JedisPool(jedisPoolConfig.getHost(),
-				jedisPoolConfig.getPort());
+		pool = new JedisPool(jedisPoolConfig.getHost(), jedisPoolConfig.getPort());
 		bloomFilter = new BloomFilterController();
 	}
 
 	@Override
 	public void execute(Tuple input) {
 		// TODO Auto-generated method stub
-		boolean needDup = true;
+		EDeDupType deDupType = EDeDupType.ByUrl;
 		Map<String, Object> doc = helper.getDoc(input);
 		Map<String, Object> attach = helper.getAttach(input);
-		String dupMode = "";
 		if (attach.containsKey("action")) {
 			Action actionObj = (Action) attach.get("action");
-			needDup = actionObj.deDup;
-			dupMode = actionObj.deDupMode;
+			deDupType = actionObj.deDupType;
 		}
 
 		boolean dup = false;
-		if (needDup) {
+		if (deDupType != EDeDupType.None) {
 			String strForDup = null;
-			if (dupMode.equals("url") && doc.containsKey("sup_url"))
+			if (deDupType == EDeDupType.ByUrl && doc.containsKey("sup_url"))
 				strForDup = (String) doc.get("sup_url");
-			else if (dupMode.equals("hash") && doc.containsKey("snp_hash"))
+			else if (deDupType == EDeDupType.ByHash && doc.containsKey("snp_hash"))
 				strForDup = (String) doc.get("snp_hash");
 			else {
 				log.error("需要排重的event中缺少hash或url字段");
