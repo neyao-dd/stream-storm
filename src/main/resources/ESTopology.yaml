@@ -49,21 +49,18 @@ bolts:
     className: "cn.com.deepdata.streamstorm.bolt.CutWordsBolt"
     constructorArgs:
       - ref: "analyzerJedisConf"
-      - "${keystone.url}"
     parallelism: 10
     
   - id: "analyzer-inner"
     className: "cn.com.deepdata.streamstorm.bolt.AnalyzeInnerRiskBolt"
     constructorArgs:
       - ref: "analyzerJedisConf"
-      - "${keystone.url}"
     parallelism: 10
     
   - id: "analyzer-indreg"
     className: "cn.com.deepdata.streamstorm.bolt.AnalyzeIndRegRiskBolt"
     constructorArgs:
       - ref: "analyzerJedisConf"
-      - "${keystone.url}"
     parallelism: 10
     
   - id: "analyzer-macro"
