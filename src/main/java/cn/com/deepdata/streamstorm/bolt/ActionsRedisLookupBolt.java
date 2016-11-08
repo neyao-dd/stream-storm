@@ -55,19 +55,10 @@ public class ActionsRedisLookupBolt extends AbstractRedisBolt {
 		Action actionObj = null;
 		try {
 			jedisCommands = getInstance();
-			if (jedisCommands.sismember("flume_action_name", action)) {
-				String key = "flume_action_" + action;
-				Map<String, String> info = jedisCommands.hgetAll(key);
-				if (!info.containsKey("analyze_type")) {
-					if (info.containsKey("need_analyze") && Boolean.parseBoolean(info.get("need_analyze"))) {
-						info.put("analyze_type", "RiskInfo");
-					} else {
-						info.put("analyze_type", "None");
-					}
-				}
+			String key = "request_action_" + action;
+			Map<String, String> info = jedisCommands.hgetAll(key);
+			if (info != null) {
 				actionObj = new Action(action, info.get("dedup_type"), info.get("analyze_type"), info.get("index_name"), info.get("index_type"));
-				jedisCommands.hset(key, "analyze_type", info.get("analyze_type"));
-				jedisCommands.hdel(key, "need_analyze");
 			} else if (ActionController.actions.containsKey(action)) {
 				actionObj = ActionController.actions.get(action);
 			}
