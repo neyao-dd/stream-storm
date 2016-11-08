@@ -1,5 +1,7 @@
 package cn.com.deepdata.streamstorm.entity;
 
+import java.util.Map;
+
 /**
  * Created by yukh on 2016/10/17
  */
@@ -27,6 +29,19 @@ public class Region {
         this.ina_id = ina_id;
         this.bna_analyze = bna_analyze;
         this.ina_pid = ina_pid;
+    }
+
+    public Region(Map<String, Object> map) {
+        this.sca_region = map.get("name").toString();
+        this.dna_score = 0.;
+        this.snc_uuid = map.get("uuid").toString();
+        this.ina_id = Integer.parseInt(map.get("id").toString());
+        this.bna_analyze = false;
+        try {
+            this.ina_pid = Integer.parseInt(map.get("parent_id").toString());
+        } catch (Exception e) {
+            this.ina_pid = 0;
+        }
     }
 
     public Region clone() {
