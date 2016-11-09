@@ -1,10 +1,11 @@
 package cn.com.deepdata.streamstorm.entity;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-public class ClientInfoItem {
+public class ClientInfoItem implements Serializable {
 	private int id;
 	private Map<String, ArrayList<String>> clientInfo;
 	

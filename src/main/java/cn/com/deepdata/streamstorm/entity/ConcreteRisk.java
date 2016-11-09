@@ -4,11 +4,12 @@ package cn.com.deepdata.streamstorm.entity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-public class ConcreteRisk implements Cloneable {
+public class ConcreteRisk implements Cloneable, Serializable {
 	private int id;
 	private int clientId;
 	private String name;

@@ -2,12 +2,13 @@ package cn.com.deepdata.streamstorm.entity;
 
 import cn.com.deepdata.commonutil.AnsjTermAnalyzer;
 
+import java.io.Serializable;
 import java.util.*;
 
 /**
  * Created by yukh on 2016/11/1
  */
-public class Company {
+public class Company implements Serializable {
     public int level;
     public String name;
     public String type;

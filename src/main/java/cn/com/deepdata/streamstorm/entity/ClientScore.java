@@ -1,6 +1,8 @@
 package cn.com.deepdata.streamstorm.entity;
 
-public class ClientScore {
+import java.io.Serializable;
+
+public class ClientScore implements Serializable {
 	private int ina_id;
 	private double dna_score;
 	private double dna_risk_score;

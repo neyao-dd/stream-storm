@@ -1,10 +1,11 @@
 package cn.com.deepdata.streamstorm.entity;
 
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class InnerRiskValue {
+public class InnerRiskValue implements Serializable {
 	public List<ClientScore> clientScore;
 	public List<DescRiskScore> riskScore;
 	public List<Tag> tag;
