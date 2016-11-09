@@ -1,8 +1,9 @@
 package cn.com.deepdata.streamstorm.entity;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 
-public class ResultRisk {
+public class ResultRisk implements Serializable {
 	public int id;
 	public int clientId;
 	public String uuid;

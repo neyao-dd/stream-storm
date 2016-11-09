@@ -1,11 +1,12 @@
 package cn.com.deepdata.streamstorm.entity;
 
+import java.io.Serializable;
 import java.util.Map;
 
 /**
  * Created by yukh on 2016/10/17
  */
-public class Region {
+public class Region implements Serializable {
     public String sca_region;
     public double dna_score;
     public String snc_uuid;

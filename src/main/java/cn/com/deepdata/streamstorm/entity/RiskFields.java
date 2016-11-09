@@ -1,9 +1,11 @@
 package cn.com.deepdata.streamstorm.entity;
 
+import java.io.Serializable;
+
 /**
  * Created by yukh on 2016/10/18.
  */
-public class RiskFields {
+public class RiskFields implements Serializable {
     public static final String indRegRiskVersionsListKey = "IRRI_VL";
     public static final String indRegRiskInfoVersionKey = "IRRI_V";
     public static final String regRiskItemPrefixKey = "RRI_%v%_I_";
