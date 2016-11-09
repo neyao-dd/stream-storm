@@ -163,7 +163,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 			source.put("nna_risks", irv.riskScore);
 			if (irv.riskDebugInfo.length() > 0)
 				source.put("sna_riskDebugInfo", irv.riskDebugInfo);
-			source.put("nna_clients", gson.toJson(irv.clientScore));
+			source.put("nna_clients", irv.clientScore);
 			if (irv.clientDebugInfo2.length() > 0)
 				source.put("sna_clientDebugInfo2", irv.clientDebugInfo2);
 			helper.emitDoc(input, source, true);

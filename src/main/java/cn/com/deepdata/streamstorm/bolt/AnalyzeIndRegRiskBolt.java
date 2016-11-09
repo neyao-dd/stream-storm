@@ -58,7 +58,7 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
         try {
             String title = helper.getDocTitle(input);
             String content = helper.getDocContent(input);
-            Map<String, Object> doc = helper.getDoc(input);
+            Map<String, Object> source = helper.getDoc(input);
             Map<String, Object> attach = helper.getAttach(input);
             if (validTokens(attach)) {
                 init(attach);
@@ -68,9 +68,14 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
                 return;
             }
             IndRegRisk indRegRisk = Analyze(title, content);
+            if (indRegRisk.regionRisk > 0) {
+                source.put("dna_regionRisk", indRegRisk.regionRisk);
+                source.put("sna_regionRiskDebugInfo", indRegRisk.regionDebugInfo);
+            }
+
             logger.info(new Gson().toJson(indRegRisk));
             // TODO: 2016/10/25
-            helper.emitDoc(input, doc, true);
+            helper.emitDoc(input, source, true);
 //            helper.emitAttach(input, attach, true);
         } catch (Exception e) {
             logger.error(CommonUtil.getExceptionString(e));

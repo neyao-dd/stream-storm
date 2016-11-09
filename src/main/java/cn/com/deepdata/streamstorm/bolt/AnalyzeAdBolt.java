@@ -36,6 +36,7 @@ public class AnalyzeAdBolt extends BaseRichBolt {
     public void execute(Tuple tuple) {
         Gson gson = new Gson();
         Map<String, Object> attach = helper.getAttach(tuple);
+        Map<String, Object> source = helper.getDoc(tuple);
         Set<String> adWords = new HashSet<>();
         if (attach.containsKey("titleTermInfo") && attach.containsKey("contentTermInfo")) {
             TermFrequencyInfo titleTfi = gson.fromJson(attach.get("titleTermInfo").toString(), TermFrequencyInfo.class);
@@ -48,7 +49,7 @@ public class AnalyzeAdBolt extends BaseRichBolt {
                 attach.put("isAd", false);
         }
         // TODO: 2016/10/20 tag
-        helper.emitAttach(tuple, attach, true);
+        helper.emitDoc(tuple, source, true);
         helper.ack(tuple);
     }
 
