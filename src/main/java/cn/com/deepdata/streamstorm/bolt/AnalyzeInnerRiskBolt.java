@@ -160,10 +160,10 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 			source.put("dna_max_risk", irv.maxRiskScore);
 			source.put("dna_total_risk", irv.totalRiskScore);
 			source.put("ina_risk_version", 3);
-			source.put("nna_risks", irv.riskScore);
+			source.put("nna_risks", Entity.getMap(irv.riskScore));
 			if (irv.riskDebugInfo.length() > 0)
 				source.put("sna_riskDebugInfo", irv.riskDebugInfo);
-			source.put("nna_clients", irv.clientScore);
+			source.put("nna_clients", Entity.getMap(irv.clientScore));
 			if (irv.clientDebugInfo2.length() > 0)
 				source.put("sna_clientDebugInfo2", irv.clientDebugInfo2);
 			helper.emitDoc(input, source, true);

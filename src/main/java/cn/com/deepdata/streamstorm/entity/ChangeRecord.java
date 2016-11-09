@@ -1,12 +1,11 @@
 package cn.com.deepdata.streamstorm.entity;
 
-import java.io.Serializable;
 import java.util.Map;
 
 /**
  * Created by yukh on 2016/11/1
  */
-public class ChangeRecord implements Serializable {
+public class ChangeRecord implements Entity {
     public String scc_change_item;
     public String scc_before_content;
     public String scc_after_content;

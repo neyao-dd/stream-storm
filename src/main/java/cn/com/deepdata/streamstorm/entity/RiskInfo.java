@@ -2,15 +2,12 @@ package cn.com.deepdata.streamstorm.entity;
 
 import com.google.gson.Gson;
 
-import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Created by yukh on 2016/10/18
  */
-public class RiskInfo implements Serializable {
+public class RiskInfo implements Entity {
     public String name;
     public int level;
     public String attribute;

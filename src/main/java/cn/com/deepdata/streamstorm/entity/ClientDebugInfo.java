@@ -1,9 +1,8 @@
 package cn.com.deepdata.streamstorm.entity;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 
-public class ClientDebugInfo implements Serializable {
+public class ClientDebugInfo implements Entity {
 	private ArrayList<ClientInfoItem> brand;
 	private ArrayList<ClientInfoItem> brand_un;
 	private ArrayList<ClientInfoItem> products;
