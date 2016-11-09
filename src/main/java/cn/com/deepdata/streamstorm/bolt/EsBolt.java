@@ -4,6 +4,7 @@ import static org.elasticsearch.hadoop.cfg.ConfigurationOptions.ES_BATCH_FLUSH_M
 import static org.elasticsearch.hadoop.cfg.ConfigurationOptions.ES_BATCH_SIZE_ENTRIES;
 import static org.elasticsearch.hadoop.cfg.ConfigurationOptions.ES_RESOURCE_WRITE;
 
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.LinkedHashMap;
@@ -29,6 +30,7 @@ import org.elasticsearch.storm.serialization.StormValueWriter;
 
 import com.google.common.collect.Maps;
 import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
 import cn.com.deepdata.esstorm.BulkResponse;
 import cn.com.deepdata.esstorm.PartitionWriter;
@@ -59,8 +61,7 @@ public class EsBolt implements IRichBolt {
 		boltConfig.put(ES_RESOURCE_WRITE, target);
 	}
 
-	public void prepare(Map conf, TopologyContext context,
-			OutputCollector collector) {
+	public void prepare(Map conf, TopologyContext context, OutputCollector collector) {
 		this.collector = collector;
 
 		LinkedHashMap copy = new LinkedHashMap(conf);
@@ -74,23 +75,17 @@ public class EsBolt implements IRichBolt {
 
 		// align Bolt / es-hadoop batch settings
 		numberOfEntries = settings.getStormBulkSize();
-		settings.setProperty(ES_BATCH_SIZE_ENTRIES,
-				String.valueOf(numberOfEntries));
+		settings.setProperty(ES_BATCH_SIZE_ENTRIES, String.valueOf(numberOfEntries));
 
 		inflightTuples = new ArrayList<Tuple>(numberOfEntries + 1);
 
-		int totalTasks = context
-				.getComponentTasks(context.getThisComponentId()).size();
+		int totalTasks = context.getComponentTasks(context.getThisComponentId()).size();
 
-		InitializationUtils.setValueWriterIfNotSet(settings,
-				StormValueWriter.class, log);
-		InitializationUtils.setBytesConverterIfNeeded(settings,
-				StormTupleBytesConverter.class, log);
-		InitializationUtils.setFieldExtractorIfNotSet(settings,
-				StormTupleFieldExtractor.class, log);
+		InitializationUtils.setValueWriterIfNotSet(settings, StormValueWriter.class, log);
+		InitializationUtils.setBytesConverterIfNeeded(settings, StormTupleBytesConverter.class, log);
+		InitializationUtils.setFieldExtractorIfNotSet(settings, StormTupleFieldExtractor.class, log);
 
-		writer = PartitionWriter.createWriter(settings,
-				context.getThisTaskIndex(), totalTasks, log);
+		writer = PartitionWriter.createWriter(settings, context.getThisTaskIndex(), totalTasks, log);
 	}
 
 	public void execute(Tuple input) {
@@ -134,22 +129,22 @@ public class EsBolt implements IRichBolt {
 			Tuple tuple = inflightTuples.get(index);
 			// bit set means the entry hasn't been removed and thus wasn't
 			// written to ES
-			if (flush.get(index) || !esIdMapping.containsKey(index)
-					|| unrecoverableError.containsKey(index)) {
+			if (flush.get(index) || !esIdMapping.containsKey(index) || unrecoverableError.containsKey(index)) {
 				if (unrecoverableError.containsKey(index)) {
-					log.error(String.format("index error. doc:%s",
-							new Gson().toJson(tuple.getValue(0))));
+					log.error(String.format("index error. doc:%s", new Gson().toJson(tuple.getValue(0))));
 					log.error(unrecoverableError.get(index));
 				}
 				collector.fail(tuple);
 			} else {
 				if (emitTuples) {
 					Map<String, String> info = esIdMapping.get(index);
-					Map<String, Object> doc = (Map<String, Object>) tuple
-							.getValue(0);
+					Type mapType = new TypeToken<Map<String, Object>>() {
+					}.getType();
+					Gson gson = new Gson();
+					Map<String, Object> doc = gson.fromJson((String) tuple.getValue(0), mapType);
 					doc.put("snc_month_index", info.get("_index"));
 					doc.put("snc_month_id", info.get("_id"));
-					collector.emit(tuple, new Values(doc));
+					collector.emit(tuple, new Values(new Gson().toJson(doc)));
 				}
 				collector.ack(tuple);
 			}
@@ -172,7 +167,7 @@ public class EsBolt implements IRichBolt {
 
 	public void declareOutputFields(OutputFieldsDeclarer declarer) {
 		if (emitTuples) {
-			declarer.declare(new Fields("source"));
+			declarer.declare(new Fields("json"));
 		}
 	}
 

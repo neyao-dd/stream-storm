@@ -79,6 +79,10 @@ bolts:
       - ref: "analyzerJedisConf"
     parallelism: 10
 
+  - id: "es-prepare"
+    className: "cn.com.deepdata.streamstorm.bolt.ESPrepareBolt"
+    parallelism: 2
+
   - id: "es-bolt-month"
     className: "cn.com.deepdata.streamstorm.bolt.EsBolt"
     constructorArgs:
@@ -115,9 +119,9 @@ streams:
     grouping:
       type: SHUFFLE
       
-  - name: "split-stream --> es-bolt"
+  - name: "split-stream --> es-prepare"
     from: "split-stream"
-    to: "es-bolt"
+    to: "es-prepare"
     grouping:
       type: SHUFFLE
       streamId: None
@@ -147,8 +151,14 @@ streams:
     grouping:
       type: SHUFFLE
 
-  - name: "analyzer-macro --> es-bolt-month"
+  - name: "analyzer-macro --> es-prepare"
     from: "analyzer-macro"
+    to: "es-prepare"
+    grouping:
+      type: SHUFFLE
+
+  - name: "es-prepare --> es-bolt-month"
+    from: "es-prepare"
     to: "es-bolt-month"
     grouping:
       type: SHUFFLE
