@@ -155,7 +155,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 			irv.clientDebugInfo2 = gson.toJson(cliDebugInfo);
 			irv.riskDebugInfo += sb.toString();
 
-			logger.info("~~~~~~~~~~~~~~~~~~" + gson.toJson(irv));
+//			logger.info("~~~~~~~~~~~~~~~~~~" + gson.toJson(irv));
 
 			// TODO: 2016/10/25 结果写入source or attach
 			helper.emitAttach(input, attach, true);
@@ -249,7 +249,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 			if (!rtInfo.isEmpty()) {
 				List<ConcreteRisk> result = riskItemByClient(rtInfo, desCli, client, clientScore, segNum);
 				// if (segNum == 8)
-				// logger.info("@@@@@@@@@" + new Gson().toJson(result));
+//				logger.info("@@@@@@@@@" + new Gson().toJson(result));
 				if (!result.isEmpty())
 					sb.append("segment:").append(segNum).append("\n").append(convertResult(result));
 			}
@@ -383,7 +383,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 			}
 		}
 		// TODO: 2016/10/28 to delete
-		// logger.info("######riskInfo:{}" , gson.toJson(riskInfo));
+//		 logger.info("######riskInfo:{}" , gson.toJson(riskInfo));
 	}
 
 	private void addRisk(Map<Integer, ConcreteRisk> riskInfo, String type, String raw, int count, int id, double weight) {
@@ -430,7 +430,8 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 			ConcreteRisk cr = entry.getValue();
 			String riskItem = getItemByRedis(RiskFields.RISK_ITEM_INFO_PREFIX, String.valueOf(id));
 			RiskInfo item = new Gson().fromJson(riskItem, RiskInfo.class);
-			if (!validConcreteRisk(riskItem, cr) || addCTByCategory(cr, item.object, ctByCate, segNum)) {
+			addCTByCategory(cr, item.object, ctByCate, segNum);
+			if (!validConcreteRisk(riskItem, cr)) {
 				it.remove();
 				continue;
 			}
@@ -442,7 +443,8 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 	}
 
 	private boolean validConcreteRisk(String riskItem, ConcreteRisk cr) {
-		return !(null == riskItem || null == cr || cr.getRisk().isEmpty() || cr.getBehavior().isEmpty()) || validLocation(riskItem, cr);
+		return !(null == riskItem || null == cr || cr.getRisk().isEmpty() || cr.getBehavior().isEmpty()
+				|| cr.getObject().isEmpty()) && validLocation(riskItem, cr);
 	}
 
 	private boolean validLocation(String riskItem, ConcreteRisk cr) {
@@ -450,7 +452,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 		return !(!info.location.isEmpty() && cr.getLocation().isEmpty());
 	}
 
-	private boolean addCTByCategory(ConcreteRisk cr, List<String> ctCate, Map<String, Set<String>> ct, int segNum) {
+	private void addCTByCategory(ConcreteRisk cr, List<String> ctCate, Map<String, Set<String>> ct, int segNum) {
 		TermFrequencyInfo tfi = getTFI(segNum);
 		for (int i = 0; i < CT_CATE_EN.length; i++) {
 			if (ctCate.contains(CT_CATE_CN[i * 2]) || ctCate.contains(CT_CATE_CN[i * 2 + 1]) && ct.containsKey(CT_CATE_EN[i])) {
@@ -462,7 +464,6 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 					cr.addObject(word, numOfWord(word, tfi));
 			}
 		}
-		return cr.getObject().isEmpty();
 	}
 
 	// TODO: 2016/10/21 data cleaning
@@ -560,7 +561,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 			}
 		}
 		// if(segNum == 8)
-		// logger.info("@@@@@@@merge:" + new Gson().toJson(merge));
+//		logger.info("@@@@@@@merge:" + new Gson().toJson(merge));
 		return riskItem(merge, desCli, segNum);
 	}
 
@@ -571,22 +572,21 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 	}
 
 	private List<ConcreteRisk> riskItem(Map<String, ConcreteRisk> merge, Map<Integer, Map<Integer, List<Double>>> desCli, int segNum) {
-		if (segNum != 8)
-			return null;
 		TermFrequencyInfo tfi = getTFI(segNum);
 		List<ConcreteRisk> riskItem = new ArrayList<>();
 		for (Map.Entry<String, ConcreteRisk> entry : merge.entrySet()) {
 			ConcreteRisk cr = entry.getValue();
 			double score = calRiskScoreBySentence(cr, tfi.termOffsets);
 			// TODO: 2016/11/8 delete
-			// logger.info("%%%%%:" + new Gson().toJson(cr));
+//			logger.info("%%%%%:" + new Gson().toJson(cr));
 			score = numberFormat(score);
 			score *= cr.getClientScore();
-			// logger.info("score3 :" + score + ", client: " + cr.getClientScore() + ", segNum:" + segNum);
+//			logger.info("score3 :" + score + ", client: " + cr.getClientScore() + ", segNum:" + segNum);
 			cr.setScore(Math.min(100., score));
 			cr.setScore_v2(Math.min(100., score * cr.getRiskWeight()));
-			if (validScore(cr.getScore()))
+			if (!validScore(cr.getScore()))
 				continue;
+//			logger.info("CCCCCCCCC{}", new Gson().toJson(cr));
 			riskItem.add(cr);
 			int cid = cr.getClientId();
 			int rid = cr.getId();
