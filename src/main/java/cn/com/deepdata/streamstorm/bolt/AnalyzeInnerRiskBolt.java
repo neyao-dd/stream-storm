@@ -157,8 +157,15 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 
 //			logger.info("~~~~~~~~~~~~~~~~~~" + gson.toJson(irv));
 
-			// TODO: 2016/10/25 结果写入source or attach
-			helper.emitAttach(input, attach, true);
+			source.put("dna_max_risk", irv.maxRiskScore);
+			source.put("dna_total_risk", irv.totalRiskScore);
+			source.put("ina_risk_version", 3);
+			source.put("nna_risks", irv.riskScore);
+			if (irv.riskDebugInfo.length() > 0)
+				source.put("sna_riskDebugInfo", irv.riskDebugInfo);
+			source.put("nna_clients", gson.toJson(irv.clientScore));
+			if (irv.clientDebugInfo2.length() > 0)
+				source.put("sna_clientDebugInfo2", irv.clientDebugInfo2);
 			helper.emitDoc(input, source, true);
 		} catch (Exception e) {
 			logger.error("analyze inner risk error...");
