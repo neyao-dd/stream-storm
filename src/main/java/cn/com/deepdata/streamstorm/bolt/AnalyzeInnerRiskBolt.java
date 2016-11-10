@@ -133,8 +133,8 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 				}
 			}
 			for (int id : totalCliScore.keySet()) {
-				double maxRiskScore = 0.;
-				double maxRiskScoreV2 = 0.;
+				double maxRiskScore = 0;
+				double maxRiskScoreV2 = 0;
 				ClientScore cs = new ClientScore();
 				cs.setIna_id(id);
 				cs.setSnc_uuid(getUuid(id));
@@ -155,7 +155,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 			irv.clientDebugInfo2 = gson.toJson(cliDebugInfo);
 			irv.riskDebugInfo += sb.toString();
 
-//			logger.info("~~~~~~~~~~~~~~~~~~" + gson.toJson(irv));
+			logger.info("~~~~~~~~~~~~~~~~~~" + gson.toJson(irv));
 
 			source.put("dna_max_risk", irv.maxRiskScore);
 			source.put("dna_total_risk", irv.totalRiskScore);
@@ -228,15 +228,15 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 				drs.setDna_client_score(totalCliScore.get(cid));
 				List<Double> scoreList = desCli.get(rid).get(cid);
 				Iterator<Double> it = scoreList.iterator();
-				double maxScore = 0.;
+				double maxScore = 0;
 				while (it.hasNext()) {
 					double score = it.next();
 					maxScore = Math.max(maxScore, score);
 				}
-				drs.setDna_score(Math.min(100., maxScore));
+				drs.setDna_score(Math.min(100, maxScore));
 				drs.setSnc_uuid(getUuid(cid));
 				if (!rWeight.isEmpty() && rWeight.containsKey(rid))
-					drs.setDna_score_v2(Math.min(100., maxScore) * rWeight.get(rid));
+					drs.setDna_score_v2(Math.min(100, maxScore) * rWeight.get(rid));
 				desRiskScore.add(drs);
 			}
 		}
@@ -358,8 +358,6 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 	}
 
 	private void rtRecogniser(Map<Integer, ConcreteRisk> riskInfo, int segNum) {
-		if (segNum != 8)
-			return;
 		Gson gson = new Gson();
 		TermFrequencyInfo tfi = getTFI(segNum);
 		Map<String, String> infoRT;
@@ -421,11 +419,11 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 	}
 
 	private boolean validWeight(double weight) {
-		return weight <= 1.;
+		return weight == INVALID_WEIGHT;
 	}
 
 	private boolean validScore(double score) {
-		return score >= 0. && score <= 100.;
+		return score > 0 && score <= 100;
 	}
 
 	private void rtHandler(Map<Integer, ConcreteRisk> riskInfo, Map<String, Set<String>> ctByCate, int segNum) {
@@ -589,8 +587,8 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 			score = numberFormat(score);
 			score *= cr.getClientScore();
 //			logger.info("score3 :" + score + ", client: " + cr.getClientScore() + ", segNum:" + segNum);
-			cr.setScore(Math.min(100., score));
-			cr.setScore_v2(Math.min(100., score * cr.getRiskWeight()));
+			cr.setScore(Math.min(100, score));
+			cr.setScore_v2(Math.min(100, score * cr.getRiskWeight()));
 			if (!validScore(cr.getScore()))
 				continue;
 //			logger.info("CCCCCCCCC{}", new Gson().toJson(cr));
@@ -655,8 +653,8 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 				}
 			}
 		}
-		score = calScoreByDistance(minDistanceBR, 70.0, 70.0, 35.0);
-		score *= (Math.min(Math.log(frequency + Math.E), 1.0));
+		score = calScoreByDistance(minDistanceBR, 70, 70, 35);
+		score *= (Math.min(Math.log(frequency + Math.E), 1));
 		for (String wordObj : mapObject.keySet()) {
 			if (wordObj.contains("*")) {
 				String[] words = wordObj.split("\\*");
@@ -688,8 +686,8 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 				}
 			}
 		}
-		score *= calScoreByDistance(minDistance, 140.0, 140.0, 70.0);
-		return score < 0 ? 0. : score * cr.getWeight() * 100.;
+		score *= calScoreByDistance(minDistance, 140, 140, 70);
+		return score < 0 ? 0 : score * cr.getWeight() * 100;
 	}
 
 	private Map<String, String> minDistance(String word1, String word2, Map<String, List<Integer>> offset) {
@@ -699,7 +697,10 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 		int avgPosition = Integer.MAX_VALUE;
 		Map<Integer, String> wordpos = new HashMap<>();
 		List<Integer> position = new ArrayList<>();
-		position.addAll(offset.get("。"));
+		if (offset.containsKey("。"))
+			position.addAll(offset.get("。"));
+		else
+			logger.info("offset: {}", gson.toJson(offset));
 		if (word2.contains("*")) {
 			if (word1.equals(word2)) {
 				String[] sl = word1.split("\\*");
@@ -784,7 +785,8 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 		Map<String, String> result = new HashMap<>();
 		Map<Integer, String> wordpos = new HashMap<>();
 		List<Integer> position = new ArrayList<>();
-		position.addAll(offset.get("。"));
+		if (offset.containsKey("。"))
+			position.addAll(offset.get("。"));
 		int minDistance = Integer.MAX_VALUE;
 		int avgPosition = Integer.MAX_VALUE;
 		if (word1.equals(word2)) {
@@ -821,7 +823,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 	}
 
 	private double calScoreByDistance(double distance, double maxDistance, double c1, double c2) {
-		return distance > maxDistance ? 0.0 : Math.log(c1 / c2 - distance / c2 + 1) / Math.log(c1 / c2 + 1);
+		return distance > maxDistance ? 0 : Math.log(c1 / c2 - distance / c2 + 1) / Math.log(c1 / c2 + 1);
 	}
 
 	public int getDistance(int pos1, int pos2, String word1, String word2) {
@@ -861,7 +863,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 	// TODO: 2016/10/24
 	public boolean isInTheSameSen(String[] sl, Map<String, List<Integer>> offset) {
 		// 处理风险行为同词
-		if (sl[0].equals(sl[1]) || offset.containsKey("。"))
+		if (sl[0].equals(sl[1]) || !offset.containsKey("。"))
 			return true;
 		if (!offset.containsKey(sl[0]) || !offset.containsKey(sl[1]))
 			return false;
@@ -962,6 +964,8 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 	}
 
 	public boolean isInTheSameSen(int pos1, int pos2, Map<String, List<Integer>> offset) {
+		if (!offset.containsKey("。"))
+			return true;
 		if (pos1 > pos2) {
 			int tmp = pos2;
 			pos2 = pos1;
