@@ -56,4 +56,19 @@ public class RiskFields implements Serializable {
     public static final String RISK_TERMS_SET = "sc_risk_terms_set";
     public static final String RISK_TERM_INFOS_PREFIX = "sc_risk_term_infos_";
     public static final String RISK_ITEM_INFO_PREFIX = "sc_risk_item_info_";
+
+    public static final String REGION_RISK_LAST_UPDATE_TIME = "sc_regionrisk_last_update_time";
+    public static final String REGION_RISK_TERMS_SET = "sc_regionrisk_terms_set";
+    public static final String REGION_RISK_TERM_INFOS_PREFIX = "sc_regionrisk_term_infos_";
+    public static final String REGION_RISK_ITEM_INFO_PREFIX = "sc_regionrisk_item_info_";
+
+    public static final String INDUSTRY_RISK_LAST_UPDATE_TIME = "sc_industryrisk_last_update_time";
+    public static final String INDUSTRY_RISK_TERMS_SET = "sc_industryrisk_terms_set";
+    public static final String INDUSTRY_RISK_TERM_INFOS_PREFIX = "sc_industryrisk_term_infos_";
+    public static final String INDUSTRY_RISK_ITEM_INFO_PREFIX = "sc_industryrisk_item_info_";
+
+    public static final String INDUSTRY_GEN_RISK_LAST_UPDATE_TIME = "sc_industrygenrisk_last_update_time";
+    public static final String INDUSTRY_GEN_RISK_TERMS_SET = "sc_industrygenrisk_terms_set";
+    public static final String INDUSTRY_GEN_RISK_TERM_INFOS_PREFIX = "sc_industrygenrisk_term_infos_";
+    public static final String INDUSTRY_GEN_RISK_ITEM_INFO_PREFIX = "sc_industrygenrisk_item_info_";
 }
