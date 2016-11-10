@@ -24,16 +24,13 @@ import java.util.*;
 @SuppressWarnings({"serial", "rawtypes"})
 public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
     private transient static Logger logger = LoggerFactory.getLogger(AnalyzeIndRegRiskBolt.class);
-//    private static final String keystoneRegionApi = "/keystone/api/v1/geo/area/_query";
     private transient DeepRichBoltHelper helper;
-//    private Map<String, Map<Integer, Integer>> regionAlias;
-//    private Map<Integer, Region> regionDetail;
     Map<String, Double> regionInfo;
-//    private RegionUtil regionUtil;
-//    private final String host;
     List<TermFrequencyInfo> contentTfi;
     TermFrequencyInfo titleTfi;
     String indRegCtrlVersion;
+    private List<Map<Integer, Map<String, Set<String>>>> regionInfoList = new ArrayList<>();
+    private List<Map<Integer, Map<String, Set<String>>>> industryInfoList = new ArrayList<>();
 
     public AnalyzeIndRegRiskBolt(JedisPoolConfig config) {
         super(config);
@@ -43,9 +40,6 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
         super.prepare(map, topologyContext, collector);
         try {
-//            regionUtil = new RegionUtil(host);
-//            regionAlias = regionUtil.getRegionAlias();
-//            regionDetail = regionUtil.getRegionDetail();
             helper = new DeepRichBoltHelper(outputCollector);
             regionInfo = new HashMap<>();
         }catch (Exception e) {
@@ -76,7 +70,6 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
             logger.info(new Gson().toJson(indRegRisk));
             // TODO: 2016/10/25
             helper.emitDoc(input, source, true);
-//            helper.emitAttach(input, attach, true);
         } catch (Exception e) {
             logger.error(CommonUtil.getExceptionString(e));
         } finally {
@@ -102,17 +95,17 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
         indRegCtrlVersion = (String) attach.get("indRegCtrlVersion");
     }
 
-    private void addRiskInfo(Map<Integer, Map<String, Set<String>>> riskInfo, Map<String, String> info,
-                             Map<String, Integer> riskTerm) {
+    private void addRiskInfo(TermFrequencyInfo tfi, Map<Integer, Map<String, Set<String>>> riskInfo, Map<String, String> info) {
         String raw = info.get("raw");
+        Map<String, Integer> frequency = tfi.termFrequency[0];
         if (raw.contains("*")) {
             String[] words = raw.split("\\*");
             for (String word : words) {
-                if (!riskTerm.containsKey(word))
+                if (!frequency.containsKey(word))
                     return ;
             }
         } else {
-            if(!riskTerm.containsKey(raw))
+            if(!frequency.containsKey(raw))
                 return ;
         }
 
@@ -143,6 +136,8 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
                                   Map<String, List<Integer>> offset) {
         Gson gson = new Gson();
         double value = 0;
+//        logger.info("regionInfo:{}", gson.toJson(regionRiskInfo));
+//        logger.info("offset:{}", gson.toJson(offset));
         Iterator<Map.Entry<Integer, Map<String, Set<String>>>> it = regionRiskInfo.entrySet().iterator();
         JedisCommands jedisCommands = null;
         try {
@@ -153,7 +148,10 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
                 if (match.containsKey("object") && match.containsKey("risk")) {
                     Set<String> mapObj = match.get("object");
                     Set<String> mapRisk = match.get("risk");
+//                    logger.info("~~~~obj:{}", gson.toJson(mapObj));
                     mapObj = splitSet(mapObj);
+//                    logger.info("obj:{}", gson.toJson(mapObj));
+//                    logger.info("risk:{}", gson.toJson(mapRisk));
                     int minDistance = Integer.MAX_VALUE;
                     try {
                         for (String wordObj : mapObj) {
@@ -161,6 +159,7 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
                                 for (String wordRisk : mapRisk) {
                                     for (int posRisk : offset.get(wordRisk)) {
                                         minDistance = Math.min(minDistance, getDistance(posObj, posRisk, wordObj, wordRisk));
+//                                        logger.info("obj:{}, risk:{}, distance:{}", posObj, posRisk, getDistance(posObj, posRisk, wordObj, wordRisk));
                                     }
                                 }
                             }
@@ -169,8 +168,10 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
                         logger.error(CommonUtil.getExceptionString(e));
                     }
                     value = calScoreByDistance((double) minDistance, 70.0, 70.0, 35.0);
-                    String strRegionRisk = jedisCommands.get(RiskFields.regRiskItemPrefixKey.replace("%v%", indRegCtrlVersion) + entry.getKey());
+//                    logger.info("value: {}, minDistance: {}", String.valueOf(value), String.valueOf(minDistance));
+                    String strRegionRisk = jedisCommands.get(RiskFields.REGION_RISK_ITEM_INFO_PREFIX + entry.getKey());
                     RegionRiskInfo info = gson.fromJson(strRegionRisk, RegionRiskInfo.class);
+//                    logger.info("value : {}, weight: {}", String.valueOf(value), String.valueOf(info.weight));
                     value *= info.weight;
                 } else {
                     it.remove();
@@ -182,6 +183,8 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
             if (jedisCommands != null)
                 returnInstance(jedisCommands);
         }
+        if (!regionRiskInfo.isEmpty())
+            regionInfoList.add(regionRiskInfo);
         return value < 0 ? 0. : (value *= 20);
     }
 
@@ -190,9 +193,9 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
         for (String word : set) {
             if (word.contains("*")) {
                 String[] sl = word.split("\\*");
-                set.addAll(Arrays.asList(sl));
+                newSet.addAll(Arrays.asList(sl));
             } else
-                set.add(word);
+                newSet.add(word);
         }
         return newSet;
     }
@@ -219,6 +222,7 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
      */
     private Map<Integer, Double> calcIndustryRisk(Map<Integer, Map<String, Set<String>>> industryRiskInfo,
                                                   Map<String, List<Integer>> offset) {
+//        logger.info("@@@@@@@@@@@@@@@@: {}", new Gson().toJson(industryRiskInfo));
         // 风险词的id为1
         Map<Integer, Double> result = new HashMap<>();
         if (!industryRiskInfo.containsKey(1)) {
@@ -281,49 +285,65 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
                 it.remove();
             }
         }
+        if (!industryRiskInfo.isEmpty())
+            industryInfoList.add(industryRiskInfo);
+//        logger.info("################: {}", new Gson().toJson(industryRiskInfo));
+//        logger.info("$$$$$$$$$$$$$$$$: {}", new Gson().toJson(industryInfoList));
         return result;
     }
 
-    public IndRegRisk AnalyzeSegment(TermFrequencyInfo tfi, double weight, Map<Integer, Map<String, Set<String>>> regionRiskInfo,
-                                     Map<Integer, Map<String, Set<String>>> industryRiskInfo) {
-        Gson gson = new Gson();
+    public IndRegRisk AnalyzeSegment(TermFrequencyInfo tfi, double weight) {
+        Map<Integer, Map<String, Set<String>>> regionRiskInfo = new HashMap<>();
+        Map<Integer, Map<String, Set<String>>> industryRiskInfo = new HashMap<>();
         IndRegRisk riskResult = new IndRegRisk();
-        Map<String, Integer> riskTerm = new HashMap<>();
+        Map<String, Integer> riskTerm;
         getRegion(tfi, regionInfo, weight);
-        JedisCommands jedisCommands = null;
         try {
-            jedisCommands = getInstance();
-            // TODO: 2016/10/18 取消riskInfo
-            tfi.termFrequency[0].keySet().stream().filter(word -> tfi.termNature.get(word).contains("risk")).forEach(
-                    word -> riskTerm.put(word, tfi.termFrequency[0].get(word))
-            );
-
-            for (String word : riskTerm.keySet()) {
-                String riskWordInfo = jedisCommands.get(RiskFields.indRegRiskTokenItemPrefixKey
-                        .replace("%v%", indRegCtrlVersion) + word);
-                List<String> riskWordInfoList = gson.fromJson(riskWordInfo, TypeProvider.type_ls);
-                for (String s_info : riskWordInfoList) {
-//					["{\"raw\":\"农业市场\",\"id\":\"32\",\"property\":\"classify1\",\"type\":\"2\"}","{\"raw\":\"农业市场\",\"id\":\"31\",\"property\":\"classify1\",\"type\":\"2\"}"]
-                    Map<String, String> info = gson.fromJson(s_info, TypeProvider.type_mss);
-                    int riskType = Integer.parseInt(info.get("type"));
-                    if (riskType == 1)
-                        addRiskInfo(regionRiskInfo, info, riskTerm);
-                    else if (riskType == 2 || riskType == 3)
-                        addRiskInfo(industryRiskInfo, info, riskTerm);
-                }
-            }
+            riskTerm = getWordByNature(tfi, "RR");              // region type: object analyze
+            calcPrepare(tfi, riskTerm, regionRiskInfo, RiskFields.REGION_RISK_TERM_INFOS_PREFIX);
+            riskTerm = getWordByNature(tfi, "IR");              // industry type: classify analyze bad
+            calcPrepare(tfi, riskTerm, industryRiskInfo, RiskFields.INDUSTRY_RISK_TERM_INFOS_PREFIX);
+            riskTerm = getWordByNature(tfi, "IGR");
+            calcPrepare(tfi, riskTerm, industryRiskInfo, RiskFields.INDUSTRY_GEN_RISK_TERM_INFOS_PREFIX);
 
             double regionRisk = calcRegionRisk(regionRiskInfo, tfi.termOffsets);
+//            logger.info("regionRisk:{}", regionRisk);
             riskResult.industryRisk = calcIndustryRisk(industryRiskInfo, tfi.termOffsets);
             if (regionRisk > riskResult.regionRisk)
                 riskResult.regionRisk = regionRisk;
         } catch (Exception e) {
             logger.error(CommonUtil.getExceptionString(e));
+        }
+        return riskResult;
+    }
+
+    private void calcPrepare(TermFrequencyInfo tfi, Map<String, Integer> riskTerm,
+                             Map<Integer, Map<String, Set<String>>> info, String key) {
+        Gson gson = new Gson();
+        riskTerm.forEach((k, v) -> getInfo(key, k)
+                .stream().forEach(s -> addRiskInfo(tfi, info, gson.fromJson(s, TypeProvider.type_mss))));
+    }
+
+    private Map<String, Integer> getWordByNature(TermFrequencyInfo tfi, String nature) {
+        Map<String, Integer> riskTerm = new HashMap<>();
+        tfi.termFrequency[0].keySet().stream().filter(word -> tfi.termNature.get(word).contains(nature)).forEach(
+                word -> riskTerm.put(word, tfi.termFrequency[0].get(word)));
+        return riskTerm;
+    }
+
+    private Set<String> getInfo(String key, String word) {
+        JedisCommands jedisCommands = null;
+        try {
+            jedisCommands = getInstance();
+            String info = jedisCommands.get(key + word);
+            return new Gson().fromJson(info ,TypeProvider.type_ss);
+        } catch (Exception e) {
+            logger.error("get info from redis error..." + CommonUtil.getExceptionString(e));
         } finally {
             if (jedisCommands != null)
                 returnInstance(jedisCommands);
         }
-        return riskResult;
+        return new HashSet<>();
     }
 
     private void getRegion(TermFrequencyInfo tfi, Map<String, Double> map, double weight) {
@@ -332,7 +352,7 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
         if (nature == null || nature.isEmpty())
             return;
         nature.entrySet().stream().forEach(e -> {
-            if (e.getValue().contains("DS")) {
+            if (e.getValue().contains("RE")) {
                 String region = e.getKey();
                 try {
                     if (map.containsKey(region))
@@ -396,7 +416,7 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
 
     private List<Integer> getRegionIdByAlias(String alias) {
         JedisCommands jedisCommands = getInstance();
-        logger.info(RiskFields.REGION_TERM_INFOS_PREFIX + alias);
+//        logger.info(RiskFields.REGION_TERM_INFOS_PREFIX + alias);
         String sInfo = jedisCommands.get(RiskFields.REGION_TERM_INFOS_PREFIX + alias);
         List<String> ids = new Gson().fromJson(sInfo, TypeProvider.type_ls);
         returnInstance(jedisCommands);
@@ -448,7 +468,6 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
 
         for (Map.Entry<Integer, Double> r : result.entrySet()) {
             try {
-//                Region region = regionDetail.get(r.getKey()).clone();
                 Region region = new Region(getRegionDetail(r.getKey()));
                 if (analyzedRegion.contains(region.sca_region))
                     region.bna_analyze = true;
@@ -470,20 +489,20 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
         IndRegRisk riskInfo = new IndRegRisk();
         try {
             if (title.length() > 0) {
-                IndRegRisk titleInfo = AnalyzeSegment(titleTfi, 3, regionRiskInfo, industryRiskInfo);
+                IndRegRisk titleInfo = AnalyzeSegment(titleTfi, 3);
                 riskInfo.addMax(titleInfo);
             }
             String[] segments = body.split("。|； |\r|\n");
             for (int i = 0; i < contentTfi.size(); i++) {
                 if (segments[i].length() > 0) {
-                    IndRegRisk segInfo = AnalyzeSegment(contentTfi.get(i), 1, regionRiskInfo, industryRiskInfo);
+                    IndRegRisk segInfo = AnalyzeSegment(contentTfi.get(i), 1);
                     riskInfo.addMax(segInfo);
                 }
             }
-            if (regionRiskInfo.isEmpty())
-                riskInfo.regionDebugInfo = gson.toJson(regionRiskInfo);
-            if (industryRiskInfo.isEmpty())
-                riskInfo.industryDebugInfo = gson.toJson(industryRiskInfo);
+            if (!regionInfoList.isEmpty())
+                riskInfo.regionDebugInfo = gson.toJson(regionInfoList);
+            if (!industryInfoList.isEmpty())
+                riskInfo.industryDebugInfo = gson.toJson(industryInfoList);
             if (!regionInfo.isEmpty())
                 riskInfo.regionList = calcRegionRelevancy(regionInfo);
         } catch (Exception e) {

@@ -33,9 +33,15 @@ public class CutWordsBolt extends AbstractRedisBolt {
     private String riskLastUpdate;
     private String clientLastUpdate;
     private String regionLastUpdate;
+    private String regionRiskLastUpdate;
+    private String industryRiskLastUpdate;
+    private String industryGenRiskLastUpdate;
     private Set<String> riskWords = new HashSet<>();
     private Set<String> clientWords = new HashSet<>();
     private Set<String> regionWords = new HashSet<>();
+    private Set<String> regionRiskWords = new HashSet<>();
+    private Set<String> industryRiskWords = new HashSet<>();
+    private Set<String> industryGenRiskWords = new HashSet<>();
 
     public CutWordsBolt(JedisPoolConfig config) {
         super(config);
@@ -120,6 +126,9 @@ public class CutWordsBolt extends AbstractRedisBolt {
         loadClientWords();
         loadRiskWords();
         loadRegionWords();
+        loadRegionRiskWords();
+        loadIndustryRiskWords();
+        loadIndustryGenRiskWords();
         lastSyncTime = System.currentTimeMillis();
     }
 
@@ -132,7 +141,19 @@ public class CutWordsBolt extends AbstractRedisBolt {
     }
 
     private void loadRegionWords() {
-        regionLastUpdate = loadWords(regionWords, REGION_TERMS_SET, REGION_LAST_UPDATE_TIME, regionLastUpdate, "DS");
+        regionLastUpdate = loadWords(regionWords, REGION_TERMS_SET, REGION_LAST_UPDATE_TIME, regionLastUpdate, "RE");
+    }
+
+    private void loadRegionRiskWords() {
+        regionRiskLastUpdate = loadWords(regionRiskWords, REGION_RISK_TERMS_SET, REGION_RISK_LAST_UPDATE_TIME, regionRiskLastUpdate, "RR");
+    }
+
+    private void loadIndustryRiskWords() {
+        industryRiskLastUpdate = loadWords(industryRiskWords, INDUSTRY_RISK_TERMS_SET, INDUSTRY_RISK_LAST_UPDATE_TIME, industryRiskLastUpdate, "IR");
+    }
+
+    private void loadIndustryGenRiskWords() {
+        industryGenRiskLastUpdate = loadWords(industryGenRiskWords, INDUSTRY_GEN_RISK_TERMS_SET, INDUSTRY_GEN_RISK_LAST_UPDATE_TIME, industryGenRiskLastUpdate, "IGR");
     }
 
     private String deleteStartSpace(String content) {
@@ -198,9 +219,9 @@ public class CutWordsBolt extends AbstractRedisBolt {
 
     private List<TermFrequencyInfo> combine(List<List<String>> tokens, List<List<String>> content) {
         Gson gson = new Gson();
-        int position = 0;
         List<TermFrequencyInfo> list = new ArrayList<>();
         for (int i = 0; i < tokens.size(); i++) {
+            int position = 0;
             HashMap<String, Integer> frequency = new HashMap<>();
             HashMap<String, String> nature = new HashMap<>();
             HashMap<String, List<Integer>> offset = new HashMap<>();
