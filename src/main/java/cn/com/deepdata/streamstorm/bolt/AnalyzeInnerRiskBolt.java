@@ -380,7 +380,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 							addRisk(riskInfo, type, raw, count, id, weight);
 						} catch (Exception e) {
 							addRisk(riskInfo, type, raw, count, id, INVALID_WEIGHT);
-							logger.error("~~~~~~~~~~~~~~~~~~~~~");
+							logger.error("raw:{}, type:{}, count:{}, id:{}", raw, type, count, id);
 						}
 					} else
 						addRisk(riskInfo, type, raw, count, id, INVALID_WEIGHT);
@@ -419,7 +419,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 	}
 
 	private boolean validWeight(double weight) {
-		return weight == INVALID_WEIGHT;
+		return weight != INVALID_WEIGHT;
 	}
 
 	private boolean validScore(double score) {
