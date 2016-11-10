@@ -423,7 +423,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 	}
 
 	private boolean validScore(double score) {
-		return score > 0 && score <= 100;
+		return score > 0 && score <= 200;
 	}
 
 	private void rtHandler(Map<Integer, ConcreteRisk> riskInfo, Map<String, Set<String>> ctByCate, int segNum) {
