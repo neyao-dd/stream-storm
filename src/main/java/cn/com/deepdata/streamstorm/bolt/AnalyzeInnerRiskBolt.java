@@ -85,6 +85,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 
 	@Override
 	public void execute(Tuple input) {
+
 		Gson gson = new Gson();
 		Map<String, Object> attach = helper.getAttach(input);
 		Map<String, Object> source = helper.getDoc(input);
@@ -107,7 +108,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 			}
 			String content = source.get("scc_content").toString();
 			String[] segments = content.split("\r|\n");
-			if (content.length() < 2 && content.length() > 500) {
+			if (inValidContent(content)) {
 				// TODO: 2016/10/20 返回都需要处理 ok
 				helper.emitAttach(input, attach, true);
 				helper.ack(input);
@@ -173,6 +174,11 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 		} finally {
 			helper.ack(input);
 		}
+	}
+
+	private boolean inValidContent(String content) {
+		String[] segments = content.split("\r|\n");
+		return segments.length < 2 || segments.length > 500 || content.length() >= 32766;
 	}
 
 	private void init(Map<String, Object> attach) {

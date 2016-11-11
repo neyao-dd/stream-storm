@@ -1,8 +1,10 @@
 package cn.com.deepdata.streamstorm.bolt;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import cn.com.deepdata.streamstorm.entity.Tag;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
@@ -65,6 +67,12 @@ public class DeepRichBoltHelper {
 	public String getDocContent(Map<String, Object> doc) {
 		String scc_content = getValue(doc, "scc_content");
 		return validString(scc_content) ? scc_content : "";
+	}
+
+	public List<Tag> getTagList(Map<String, Object> source) {
+		if (source.containsKey("nna_tags"))
+			return (List<Tag>)source.get("nna_tags");
+		return new ArrayList<>();
 	}
 
 	public String getAction(Tuple input) {
