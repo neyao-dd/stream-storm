@@ -162,9 +162,16 @@ streams:
     to: "es-bolt-month"
     grouping:
       type: SHUFFLE
+      streamId: Month
 
   - name: "es-bolt-month --> es-bolt"
     from: "es-bolt-month"
+    to: "es-bolt"
+    grouping:
+      type: SHUFFLE
+
+  - name: "es-prepare --> es-bolt"
+    from: "es-prepare"
     to: "es-bolt"
     grouping:
       type: SHUFFLE

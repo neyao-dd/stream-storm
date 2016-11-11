@@ -1,8 +1,5 @@
 package cn.com.deepdata.streamstorm.bolt;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
 
@@ -21,9 +18,11 @@ import cn.com.deepdata.streamstorm.util.CommonUtil;
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 
+@SuppressWarnings({"serial", "rawtypes"})
 public class ESPrepareBolt extends BaseRichBolt {
 	private transient DeepRichBoltHelper helper;
 	private transient OutputCollector _collector;
+	private static final String monthStream = "Month";
 
 	@Override
 	public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
@@ -36,6 +35,9 @@ public class ESPrepareBolt extends BaseRichBolt {
 	public void execute(Tuple input) {
 		// TODO Auto-generated method stub
 		Map<String, Object> source = helper.getDoc(input);
+		Map<String, Object> attach = helper.getAttach(input);
+		Action actionObj = (Action) attach.get("action");
+
 		Lists.newArrayList("_index", "_type", "_id").stream().filter(k -> source.containsKey(k)).forEach(k -> {
 			source.put("snp" + k, source.get(k));
 			source.remove(k);
@@ -44,13 +46,10 @@ public class ESPrepareBolt extends BaseRichBolt {
 			source.put("snp_type", "flumetype");
 		}
 		if (!source.containsKey("snp_index")) {
-			Map<String, Object> attach = helper.getAttach(input);
-			Action actionObj = (Action) attach.get("action");
-
 			List<String> indexNameComponents = Lists.newArrayList();
 			indexNameComponents.add("flume");
 			String sortTime = CommonUtil.getSortTime(source);
-			if (actionObj.indexType == EIndexType.ByMonth)
+			if (actionObj.indexType == EIndexType.ByMonth || actionObj.indexType == EIndexType.ByMonthDay)
 				indexNameComponents.add(sortTime.substring(0, 7));
 			else if (actionObj.indexType == EIndexType.ByDay)
 				indexNameComponents.add(sortTime);
@@ -71,13 +70,18 @@ public class ESPrepareBolt extends BaseRichBolt {
 			}
 			source.put("snp_index", String.join("-", indexNameComponents));
 		}
-		_collector.emit(new Values(new Gson().toJson(source)));
+		Values values = new Values(new Gson().toJson(source));
+		if (actionObj.indexType == EIndexType.ByMonthDay)
+			_collector.emit(monthStream, values);
+		else
+			_collector.emit(values);
 		helper.ack(input);
 	}
 
 	@Override
 	public void declareOutputFields(OutputFieldsDeclarer declarer) {
 		// TODO Auto-generated method stub
+		declarer.declareStream(monthStream, new Fields("json"));
 		declarer.declare(new Fields("json"));
 	}
 
