@@ -66,6 +66,7 @@ public class AnalyzeMacroBolt extends AbstractRedisBolt {
         containsMacroGlobal(content);
         containsMacroLocal(content);
         //TODO tag
+        helper.emit(input, true);
         helper.ack(input);
     }
 

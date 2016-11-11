@@ -34,6 +34,7 @@ import com.google.gson.reflect.TypeToken;
 
 import cn.com.deepdata.esstorm.BulkResponse;
 import cn.com.deepdata.esstorm.PartitionWriter;
+import cn.com.deepdata.streamstorm.util.CommonUtil;
 
 @SuppressWarnings({ "rawtypes", "unchecked", "serial" })
 public class EsBolt implements IRichBolt {
@@ -144,6 +145,8 @@ public class EsBolt implements IRichBolt {
 					Map<String, Object> doc = gson.fromJson((String) tuple.getValue(0), mapType);
 					doc.put("snc_month_index", info.get("_index"));
 					doc.put("snc_month_id", info.get("_id"));
+					String sortTime = CommonUtil.getSortTime(doc);
+					doc.put("snp_index", info.get("_index").replace(sortTime.substring(0, 7), sortTime));
 					collector.emit(tuple, new Values(new Gson().toJson(doc)));
 				}
 				collector.ack(tuple);

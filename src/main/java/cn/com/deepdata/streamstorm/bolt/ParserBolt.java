@@ -130,7 +130,7 @@ public class ParserBolt extends BaseRichBolt {
 			doc.remove("action");
 			doc.remove("inp_task_id");
 			doc.keySet().stream().filter(k -> {
-				return k.indexOf("_") > 0;
+				return k.indexOf("_") >= 0;
 			}).forEach(k -> {
 				try {
 					Object newValue = parseValue(k, doc.get(k));

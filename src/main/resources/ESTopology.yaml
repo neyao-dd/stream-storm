@@ -86,7 +86,7 @@ bolts:
   - id: "es-bolt-month"
     className: "cn.com.deepdata.streamstorm.bolt.EsBolt"
     constructorArgs:
-      - "storm-test2/flumetype"
+      - "storm-test2/{snp_type}"
       - ref: "esSaverConf"
       - true
     parallelism: 1
@@ -94,7 +94,7 @@ bolts:
   - id: "es-bolt"
     className: "cn.com.deepdata.streamstorm.bolt.EsBolt"
     constructorArgs:
-      - "storm-test1/flumetype"
+      - "storm-test1/{snp_type}"
       - ref: "esSaverConf"
       - false
     parallelism: 1
