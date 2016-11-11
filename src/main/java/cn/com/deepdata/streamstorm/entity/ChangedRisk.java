@@ -1,11 +1,9 @@
 package cn.com.deepdata.streamstorm.entity;
 
-import java.io.Serializable;
-
 /**
  * Created by yukh on 2016/11/1
  */
-public class ChangedRisk implements Serializable {
+public class ChangedRisk implements Entity {
 	int inp_level;
 	int inp_seq_no;
 	String sca_risk_type;

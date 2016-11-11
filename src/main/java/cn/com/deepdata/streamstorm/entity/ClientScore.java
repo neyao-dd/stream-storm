@@ -1,8 +1,8 @@
 package cn.com.deepdata.streamstorm.entity;
 
-import java.io.Serializable;
+import com.google.gson.Gson;
 
-public class ClientScore implements Serializable {
+public class ClientScore implements Entity {
 	private int ina_id;
 	private double dna_score;
 	private double dna_risk_score;
@@ -47,5 +47,9 @@ public class ClientScore implements Serializable {
 
 	public void setDna_risk_score_v2(double dna_risk_score_v2) {
 		this.dna_risk_score_v2 = dna_risk_score_v2;
+	}
+
+	public String toString() {
+		return new Gson().toJson(this);
 	}
 }
