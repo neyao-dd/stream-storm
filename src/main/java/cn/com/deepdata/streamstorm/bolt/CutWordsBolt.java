@@ -62,21 +62,24 @@ public class CutWordsBolt extends AbstractRedisBolt {
     private String loadWords(Set<String> localWords, String key, String updateTimeKey, String lastUpdateTime, String nature) {
         JedisCommands jedisCommands = null;
         try {
+            String wordType = key.split("_")[1];
             jedisCommands = getInstance();
             String redisLastUpdate = jedisCommands.get(updateTimeKey);
             if (inValidTime(lastUpdateTime)) {
                 localWords.addAll(jedisCommands.smembers(key));
                 changeWordNature(localWords, nature, UsrLibraryController.EChangeOprationType.kAddOpration);
+                logger.info("load {} words success, size : {}", wordType,clientWords.size());
             } else if (needUpdate(redisLastUpdate, lastUpdateTime)) {
                 Set<String> remoteWords = jedisCommands.smembers(key);
                 Set<String> remoteMore = diffSet(remoteWords, localWords);
                 Set<String> remoteLess = diffSet(localWords, remoteWords);
                 changeWordNature(remoteMore, nature, UsrLibraryController.EChangeOprationType.kAddOpration);
                 changeWordNature(remoteLess, nature, UsrLibraryController.EChangeOprationType.kDeleteOpration);
+                logger.info("update {} words success, size : {}", wordType, clientWords.size());
             }
             return redisLastUpdate;
         } catch (Exception e) {
-            logger.error("load word error..." + CommonUtil.getExceptionString(e));
+            logger.error("load words error..." + CommonUtil.getExceptionString(e));
         } finally {
             if (null != jedisCommands)
                 returnInstance(jedisCommands);
@@ -213,6 +216,7 @@ public class CutWordsBolt extends AbstractRedisBolt {
         attach.put("titleTermInfo", titleTermInfo);
         attach.put("contentRaw", contentRaw);
         attach.put("contentTermInfo", combine(contentTermInfo, contentRaw));
+//        logger.info("---------------------------------------------------------------------------------------");
         helper.emitAttach(input, attach, true);
         helper.ack(input);
     }

@@ -155,7 +155,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 			irv.clientDebugInfo2 = gson.toJson(cliDebugInfo);
 			irv.riskDebugInfo += sb.toString();
 
-			logger.info("~~~~~~~~~~~~~~~~~~" + gson.toJson(irv));
+//			logger.info("~~~~~~~~~~~~~~~~~~" + gson.toJson(irv));
 
 			source.put("dna_max_risk", irv.maxRiskScore);
 			source.put("dna_total_risk", irv.totalRiskScore);
@@ -699,8 +699,6 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 		List<Integer> position = new ArrayList<>();
 		if (offset.containsKey("。"))
 			position.addAll(offset.get("。"));
-		else
-			logger.info("offset: {}", gson.toJson(offset));
 		if (word2.contains("*")) {
 			if (word1.equals(word2)) {
 				String[] sl = word1.split("\\*");
