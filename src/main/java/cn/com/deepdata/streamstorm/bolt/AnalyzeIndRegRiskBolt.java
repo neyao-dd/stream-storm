@@ -42,7 +42,7 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
         try {
             helper = new DeepRichBoltHelper(outputCollector);
             regionInfo = new HashMap<>();
-        }catch (Exception e) {
+        } catch (Exception e) {
             logger.error(CommonUtil.getExceptionString(e));
         }
     }
@@ -65,6 +65,15 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
             if (indRegRisk.regionRisk > 0) {
                 source.put("dna_regionRisk", indRegRisk.regionRisk);
                 source.put("sna_regionRiskDebugInfo", indRegRisk.regionDebugInfo);
+            }
+            source.put("nna_regions", Entity.getMap(indRegRisk.regionList));
+            if (indRegRisk.industryRisk.size() > 0) {
+                List<Industry> industries = indRegRisk.industryRisk;
+                source.put("nna_industryRisk", industries);
+                source.put("sna_industryRiskDebugInfo", indRegRisk.industryDebugInfo);
+                source.put("ina_industry", industries.get(0).getIna_id());
+                if (industries.size() > 1)
+                    source.put("ina_industry2", industries.get(1).getIna_id());
             }
 
 //            logger.info(new Gson().toJson(indRegRisk));
@@ -102,11 +111,11 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
             String[] words = raw.split("\\*");
             for (String word : words) {
                 if (!frequency.containsKey(word))
-                    return ;
+                    return;
             }
         } else {
-            if(!frequency.containsKey(raw))
-                return ;
+            if (!frequency.containsKey(raw))
+                return;
         }
 
         Integer id = Integer.parseInt(info.get("id"));
@@ -292,7 +301,8 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
         return result;
     }
 
-    public IndRegRisk AnalyzeSegment(TermFrequencyInfo tfi, double weight) {
+    public IndRegRisk AnalyzeSegment(TermFrequencyInfo tfi, double weight, Map<Integer, Double> industryRiskMap) {
+        industryRiskMap.clear();
         Map<Integer, Map<String, Set<String>>> regionRiskInfo = new HashMap<>();
         Map<Integer, Map<String, Set<String>>> industryRiskInfo = new HashMap<>();
         IndRegRisk riskResult = new IndRegRisk();
@@ -308,13 +318,41 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
 
             double regionRisk = calcRegionRisk(regionRiskInfo, tfi.termOffsets);
 //            logger.info("regionRisk:{}", regionRisk);
-            riskResult.industryRisk = calcIndustryRisk(industryRiskInfo, tfi.termOffsets);
+            industryRiskMap = calcIndustryRisk(industryRiskInfo, tfi.termOffsets);
             if (regionRisk > riskResult.regionRisk)
                 riskResult.regionRisk = regionRisk;
         } catch (Exception e) {
             logger.error(CommonUtil.getExceptionString(e));
         }
         return riskResult;
+    }
+
+    private List<Industry> convertIndustryRisk(List<Map<Integer, Double>> list) {
+        if (list == null || list.isEmpty())
+            return new ArrayList<>();
+        Map<Integer, Double> map = merge(list);
+        return convertIndustryRisk(map);
+    }
+
+    private List<Industry> convertIndustryRisk(Map<Integer, Double> map) {
+        if (map == null || map.isEmpty())
+            return new ArrayList<>();
+        List<Industry> list = new ArrayList<>();
+        map.forEach((k, v) -> list.add(new Industry(k, v)));
+        Collections.sort(list, (Industry o1, Industry o2) -> (o2.getDna_score() > o1.getDna_score()
+                ? 1 : (o2.getDna_score() == o1.getDna_score() ? 0 : -1)));
+        return list;
+    }
+
+    private Map<Integer, Double> merge(List<Map<Integer, Double>> map) {
+        Map<Integer, Double> full = new HashMap<>();
+        map.stream().forEach(inner -> inner.forEach((k, v) -> {
+            if (full.containsKey(k))
+                full.put(k, Math.max(v, full.get(k)));
+            else
+                full.put(k, v);
+        }));
+        return full;
     }
 
     private void calcPrepare(TermFrequencyInfo tfi, Map<String, Integer> riskTerm,
@@ -336,7 +374,7 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
         try {
             jedisCommands = getInstance();
             String info = jedisCommands.get(key + word);
-            return new Gson().fromJson(info ,TypeProvider.type_ss);
+            return new Gson().fromJson(info, TypeProvider.type_ss);
         } catch (Exception e) {
             logger.error("get info from redis error..." + CommonUtil.getExceptionString(e));
         } finally {
@@ -391,7 +429,7 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
         return info.get("name").toString();
     }
 
-    private int getParentId (int id) {
+    private int getParentId(int id) {
         Map<String, Object> info = getRegionDetail(id);
         int pid;
         try {
@@ -482,25 +520,40 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
         return list;
     }
 
+    private void addMaxIndustry(Map<Integer, Double> origin, Map<Integer, Double> map) {
+        for(Integer id : map.keySet()){
+            if (origin.containsKey(id)) {
+                origin.put(id, Math.max(origin.get(id), map.get(id)));
+            } else
+                origin.put(id, map.get(id));
+        }
+    }
+
     public IndRegRisk Analyze(String title, String body) {
         Gson gson = new Gson();
         IndRegRisk riskInfo = new IndRegRisk();
+        Map<Integer, Double> industryRisk = new HashMap<>();
+        Map<Integer, Double> industryRiskSegment = new HashMap<>();
         try {
             if (title.length() > 0) {
-                IndRegRisk titleInfo = AnalyzeSegment(titleTfi, 3);
-                riskInfo.addMax(titleInfo);
+                IndRegRisk titleInfo = AnalyzeSegment(titleTfi, 3, industryRiskSegment);
+                riskInfo.addMaxRegionRisk(titleInfo);
+                addMaxIndustry(industryRisk, industryRiskSegment);
             }
             String[] segments = body.split("。|； |\r|\n");
             for (int i = 0; i < contentTfi.size(); i++) {
                 if (segments[i].length() > 0) {
-                    IndRegRisk segInfo = AnalyzeSegment(contentTfi.get(i), 1);
-                    riskInfo.addMax(segInfo);
+                    IndRegRisk segInfo = AnalyzeSegment(contentTfi.get(i), 1, industryRiskSegment);
+                    riskInfo.addMaxRegionRisk(segInfo);
+                    addMaxIndustry(industryRisk, industryRiskSegment);
                 }
             }
             if (!regionInfoList.isEmpty())
                 riskInfo.regionDebugInfo = gson.toJson(regionInfoList);
-            if (!industryInfoList.isEmpty())
+            if (!industryInfoList.isEmpty()) {
                 riskInfo.industryDebugInfo = gson.toJson(industryInfoList);
+                riskInfo.industryRisk = convertIndustryRisk(industryRisk);
+            }
             if (!regionInfo.isEmpty())
                 riskInfo.regionList = calcRegionRelevancy(regionInfo);
         } catch (Exception e) {

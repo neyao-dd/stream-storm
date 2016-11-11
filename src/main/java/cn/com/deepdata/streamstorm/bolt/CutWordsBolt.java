@@ -117,6 +117,10 @@ public class CutWordsBolt extends AbstractRedisBolt {
         return !(null == set || set.isEmpty());
     }
 
+    private boolean validList(List list) {
+        return !(null == list || list.isEmpty());
+    }
+
     private void LoadWords() {
         synchronized (syncWordsLock) {
             if (System.currentTimeMillis() - lastSyncTime < 60 * 1000)
@@ -217,20 +221,22 @@ public class CutWordsBolt extends AbstractRedisBolt {
         attach.put("contentRaw", contentRaw);
         attach.put("contentTermInfo", combine(contentTermInfo, contentRaw));
 //        logger.info("---------------------------------------------------------------------------------------");
+//        logger.info("TOKENS is {}", gson.toJson(attach.get("contentTermInfo")));
         helper.emitAttach(input, attach, true);
         helper.ack(input);
     }
 
-    private List<TermFrequencyInfo> combine(List<List<String>> tokens, List<List<String>> content) {
+    private List<TermFrequencyInfo> combine(List<List<String>> tokensInfo, List<List<String>> content) {
         Gson gson = new Gson();
         List<TermFrequencyInfo> list = new ArrayList<>();
-        for (int i = 0; i < tokens.size(); i++) {
+        for (int i = 0; i < tokensInfo.size(); i++) {
             int position = 0;
             HashMap<String, Integer> frequency = new HashMap<>();
             HashMap<String, String> nature = new HashMap<>();
             HashMap<String, List<Integer>> offset = new HashMap<>();
+            List<List<String>> tokens = new ArrayList<>();
             TermFrequencyInfo tfiCopy = new TermFrequencyInfo(1);
-            List<String> tempSeg = tokens.get(i);
+            List<String> tempSeg = tokensInfo.get(i);
             List<String> sentences = content.get(i);
             for (int j = 0; j < tempSeg.size(); j++) {
                 TermFrequencyInfo tfi = gson.fromJson(tempSeg.get(j), TermFrequencyInfo.class);
@@ -238,6 +244,8 @@ public class CutWordsBolt extends AbstractRedisBolt {
                 putMap(frequency, tfi.termFrequency[0]);
                 putMap(offset, tfi.termOffsets, position);
                 position += sentences.get(j).length();
+                if (validList(tfi.tokens) && validList(tfi.tokens.get(0)))
+                    tokens.addAll(tfi.tokens);
                 addMap(offset, "。", position);
                 ++position;
             }
@@ -245,6 +253,7 @@ public class CutWordsBolt extends AbstractRedisBolt {
             tfiCopy.termFrequency[0] = frequency;
             tfiCopy.termNature = nature;
             tfiCopy.termOffsets = offset;
+            tfiCopy.tokens = tokens;
             list.add(tfiCopy);
         }
         return list;

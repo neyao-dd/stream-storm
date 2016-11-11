@@ -10,27 +10,20 @@ import java.util.Map;
  */
 public class IndRegRisk implements Entity {
     public double regionRisk;
-    public Map<Integer, Double> industryRisk;
+    public List<Industry> industryRisk;
     public String regionDebugInfo;
     public String industryDebugInfo;
     public List<Region> regionList;
 
     public IndRegRisk() {
         regionRisk = 0;
-        industryRisk = new HashMap<>();
+        industryRisk = new ArrayList<>();
         regionDebugInfo = "";
         industryDebugInfo = "";
         regionList = new ArrayList<>();
     }
 
-    public void addMax(IndRegRisk other) {
+    public void addMaxRegionRisk(IndRegRisk other) {
         this.regionRisk = Math.max(this.regionRisk, other.regionRisk);
-        for (Integer id : other.industryRisk.keySet()) {
-            if (this.industryRisk.containsKey(id)) {
-                this.industryRisk.put(id, Math.max(this.industryRisk.get(id), other.industryRisk.get(id)));
-            }
-            else
-                this.industryRisk.put(id, other.industryRisk.get(id));
-        }
     }
 }
