@@ -67,7 +67,7 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
                 source.put("sna_regionRiskDebugInfo", indRegRisk.regionDebugInfo);
             }
 
-            logger.info(new Gson().toJson(indRegRisk));
+//            logger.info(new Gson().toJson(indRegRisk));
             // TODO: 2016/10/25
             helper.emitDoc(input, source, true);
         } catch (Exception e) {
