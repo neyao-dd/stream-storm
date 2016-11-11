@@ -53,7 +53,12 @@ public class ESPrepareBolt extends BaseRichBolt {
 				indexNameComponents.add(sortTime.substring(0, 7));
 			else if (actionObj.indexType == EIndexType.ByDay)
 				indexNameComponents.add(sortTime);
-			indexNameComponents.add(actionObj.indexName);
+			String indexName = actionObj.indexName;
+			if (indexName.startsWith("-"))
+				indexName = indexName.substring(1);
+			if (indexName.endsWith("-"))
+				indexName = indexName.substring(0, indexName.length() - 1);
+			indexNameComponents.add(indexName);
 			if (actionObj.name.equals("addContents")) {
 				String info_type = (String) source.get("inp_type");
 				if (info_type.equals("1")) {
