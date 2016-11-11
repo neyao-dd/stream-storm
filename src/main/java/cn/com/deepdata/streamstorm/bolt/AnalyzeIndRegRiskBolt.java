@@ -484,8 +484,6 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
 
     public IndRegRisk Analyze(String title, String body) {
         Gson gson = new Gson();
-        Map<Integer, Map<String, Set<String>>> regionRiskInfo = new HashMap<>();
-        Map<Integer, Map<String, Set<String>>> industryRiskInfo = new HashMap<>();
         IndRegRisk riskInfo = new IndRegRisk();
         try {
             if (title.length() > 0) {
