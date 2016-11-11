@@ -2,13 +2,12 @@ package cn.com.deepdata.streamstorm.entity;
 
 import com.google.gson.Gson;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 
 /**
  * Created by yukh on 2016/10/18
  */
-public class RegionRiskInfo implements Serializable {
+public class RegionRiskInfo implements Entity {
     public int id;
     public String name;
     public int weight;

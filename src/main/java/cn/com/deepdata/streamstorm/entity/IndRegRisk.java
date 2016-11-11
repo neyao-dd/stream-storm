@@ -8,7 +8,7 @@ import java.util.Map;
 /**
  * Created by yukh on 2016/10/17
  */
-public class IndRegRisk {
+public class IndRegRisk implements Entity {
     public double regionRisk;
     public Map<Integer, Double> industryRisk;
     public String regionDebugInfo;
