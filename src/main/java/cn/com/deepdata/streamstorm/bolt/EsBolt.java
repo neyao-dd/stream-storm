@@ -22,6 +22,7 @@ import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 import org.elasticsearch.hadoop.EsHadoopException;
 import org.elasticsearch.hadoop.rest.InitializationUtils;
+import org.elasticsearch.hadoop.serialization.EsHadoopSerializationException;
 import org.elasticsearch.storm.TupleUtils;
 import org.elasticsearch.storm.cfg.StormSettings;
 import org.elasticsearch.storm.serialization.StormTupleBytesConverter;
@@ -102,6 +103,10 @@ public class EsBolt implements IRichBolt {
 			if (numberOfEntries > 0 && inflightTuples.size() >= numberOfEntries) {
 				flush();
 			}
+		} catch (EsHadoopSerializationException e) {
+			log.error("parse error.");
+			log.error("input:" + input.getString(0));
+			throw e;
 		} catch (RuntimeException ex) {
 			throw ex;
 		}

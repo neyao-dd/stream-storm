@@ -31,10 +31,10 @@ public class IndexTest {
 		// copy.put("es.nodes.data.only", "false");
 		copy.put("es.nodes", "119.254.86.82");
 		copy.put("es.port", "19200");
+		copy.put("es.input.json", "true");
 		copy.put("es.ser.writer.value.class", JdkValueWriter.class.getName());
 		StormSettings settings = new StormSettings(copy);
-		PartitionWriter writer = PartitionWriter.createWriter(settings, 0, 1,
-				log);
+		PartitionWriter writer = PartitionWriter.createWriter(settings, 0, 1, log);
 
 		Map<String, Object> doc = Maps.newHashMap();
 		doc.put("scc_index", "storm-test");
@@ -42,7 +42,7 @@ public class IndexTest {
 		doc.put("nnp_abnormal_items", Lists.newArrayList());
 		doc.put("tfc_time", format.format(System.currentTimeMillis()));
 		System.out.println(new Gson().toJson(doc));
-		writer.repository.writeToIndex(doc);
+		writer.repository.writeToIndex(new Gson().toJson(doc));
 		BulkResponse res = writer.repository.tryFlush();
 		Map<Integer, Map<String, String>> esIdMapping = res.getEsIdMapping();
 		System.out.println(esIdMapping.get(0));
