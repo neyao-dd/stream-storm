@@ -38,7 +38,7 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
 
     @Override
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
-        super.prepare(map, topologyContext, collector);
+        super.prepare(map, topologyContext, outputCollector);
         try {
             helper = new DeepRichBoltHelper(outputCollector);
             regionInfo = new HashMap<>();
@@ -50,6 +50,7 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
     @Override
     public void execute(Tuple input) {
         try {
+            clear();
             String title = helper.getDocTitle(input);
             String content = helper.getDocContent(input);
             Map<String, Object> source = helper.getDoc(input);
@@ -102,6 +103,12 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
         titleTfi = (TermFrequencyInfo) attach.get("titleTermInfo");
         contentTfi = (List<TermFrequencyInfo>) attach.get("contentTermInfo");
         indRegCtrlVersion = (String) attach.get("indRegCtrlVersion");
+    }
+
+    private void clear() {
+        regionInfo.clear();
+        regionInfoList.clear();
+        industryInfoList.clear();
     }
 
     private void addRiskInfo(TermFrequencyInfo tfi, Map<Integer, Map<String, Set<String>>> riskInfo, Map<String, String> info) {
