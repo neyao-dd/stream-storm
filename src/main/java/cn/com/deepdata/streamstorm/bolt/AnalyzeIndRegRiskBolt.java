@@ -464,7 +464,13 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
     // TODO: 2016/11/3 try catch
     private List<Integer> convertList(List<String> list) {
         List<Integer> newList = new ArrayList<>();
-        list.stream().forEach(s -> newList.add(Integer.parseInt(s)));
+        list.stream().forEach(s -> {
+            try {
+                newList.add(Integer.parseInt(s));
+            } catch (Exception e) {
+                newList.add(0);
+            }
+        });
         return newList;
     }
 
@@ -480,6 +486,8 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
             List<Integer> ids = getId(regionName);
             for (int id : ids) {
                 try {
+                    if (id == 0)
+                        continue;
                     int pid = getParentId(id);
                     String pRegion;
                     result.put(id, ri.getValue());
