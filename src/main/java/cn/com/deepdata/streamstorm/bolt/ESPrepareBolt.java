@@ -1,6 +1,5 @@
 package cn.com.deepdata.streamstorm.bolt;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -12,8 +11,6 @@ import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
-import org.codehaus.jackson.JsonEncoding;
-import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.JsonProcessingException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.slf4j.Logger;
@@ -24,8 +21,6 @@ import cn.com.deepdata.streamstorm.controller.EIndexType;
 import cn.com.deepdata.streamstorm.util.CommonUtil;
 
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.gson.Gson;
 
 @SuppressWarnings({ "serial", "rawtypes" })
 public class ESPrepareBolt extends BaseRichBolt {
@@ -33,22 +28,14 @@ public class ESPrepareBolt extends BaseRichBolt {
 	private transient DeepRichBoltHelper helper;
 	private transient OutputCollector _collector;
 	private static final String monthStream = "Month";
-	private transient JsonGenerator jsonGenerator;
 	private transient ObjectMapper objectMapper;
-	private transient ByteArrayOutputStream baos;
 
 	@Override
 	public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
 		// TODO Auto-generated method stub
 		_collector = collector;
 		helper = new DeepRichBoltHelper(collector);
-		try {
-			baos = new ByteArrayOutputStream();
-			objectMapper = new ObjectMapper();
-			jsonGenerator = objectMapper.getJsonFactory().createJsonGenerator(baos, JsonEncoding.UTF8);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		objectMapper = new ObjectMapper();
 	}
 
 	@Override
@@ -96,10 +83,7 @@ public class ESPrepareBolt extends BaseRichBolt {
 			source.put("snp_index", String.join("-", indexNameComponents));
 		}
 		try {
-			baos.reset();
-			jsonGenerator.writeObject(source);
-			baos.flush();
-			Values values = new Values(baos.toString());
+			Values values = new Values(objectMapper.writeValueAsString(source));
 			if (actionObj.indexType == EIndexType.ByMonthDay)
 				_collector.emit(monthStream, values);
 			else
@@ -125,19 +109,6 @@ public class ESPrepareBolt extends BaseRichBolt {
 
 	@Override
 	public void cleanup() {
-		try {
-			if (jsonGenerator != null) {
-				jsonGenerator.flush();
-			}
-			if (!jsonGenerator.isClosed()) {
-				jsonGenerator.close();
-			}
-			baos.close();
-			jsonGenerator = null;
-			objectMapper = null;
-			baos = null;
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		objectMapper = null;
 	}
 }

@@ -2,6 +2,7 @@ package cn.com.deepdata.stormTest;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Map;
 
 import org.codehaus.jackson.JsonEncoding;
 import org.codehaus.jackson.JsonGenerator;
@@ -11,6 +12,8 @@ import cn.com.deepdata.streamstorm.entity.ClientScore;
 import cn.com.deepdata.streamstorm.entity.InnerRiskValue;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.gson.Gson;
 
 public class JsonGeneratorTest {
 	private JsonGenerator jsonGenerator = null;
@@ -41,29 +44,31 @@ public class JsonGeneratorTest {
 			e.printStackTrace();
 		}
 	}
-	
+
 	public void Test() {
-		InnerRiskValue value = new InnerRiskValue();
-		ClientScore score = new ClientScore();
-		score.setDna_risk_score(33.);
-		score.setDna_score(11.);
-		value.clientScore = Lists.newArrayList(score);
+		Map<String, Object> value = Maps.newHashMap();
+		value.put("content", "哈哈😄");
 		try {
-			jsonGenerator.writeObject(value);
-			baos.flush();
-			System.out.println(baos.toString());
-			baos.reset();
-			jsonGenerator.writeObject(value);
-			baos.flush();
-			System.out.println(baos.toString());
-			baos.reset();
 			jsonGenerator.writeObject(value);
 			baos.flush();
 			System.out.println(baos.toString());
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		} 
+		}
+		try {
+			baos.reset();
+			jsonGenerator.writeObject(value);
+			baos.flush();
+			String strV = baos.toString();
+			System.out.println(strV);
+			System.out.println(objectMapper.writeValueAsString(value));
+			Map<String, Object> v = objectMapper.readValue(strV, Map.class);
+			System.out.println(v);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	public static void main(String[] args) {
