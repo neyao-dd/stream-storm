@@ -651,7 +651,11 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 		for (String wordBeh : mapBehavior.keySet()) {
 			for (String wordRisk : mapRisk.keySet()) {
 				if (isInTheSameSen(wordBeh, wordRisk, offset)) {
-					Map<String, String> map = minDistance(wordBeh, wordRisk, offset);
+					Map<String, String> map;
+					if (wordBeh.contains("*"))
+						map = minDistance(wordBeh, wordRisk, offset);
+					else
+						map = minDistance(wordRisk, wordBeh, offset);
 					int tmpMinDis = Integer.parseInt(map.get("min"));
 					if (tmpMinDis < minDistanceBR) {
 						minDistanceBR = tmpMinDis;
@@ -703,6 +707,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 		return score < 0 ? 0 : score * cr.getWeight() * 100;
 	}
 
+	// TODO: 2016/11/14 简化 
 	private Map<String, String> minDistance(String word1, String word2, Map<String, List<Integer>> offset) {
 		Map<String, String> result = new HashMap<>();
 		Gson gson = new Gson();
