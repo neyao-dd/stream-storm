@@ -69,7 +69,7 @@ public class AnalyzeIndRegRiskBolt extends AbstractRedisBolt {
             source.put("nna_regions", Entity.getMap(indRegRisk.regionList));
             if (indRegRisk.industryRisk.size() > 0) {
                 List<Industry> industries = indRegRisk.industryRisk;
-                source.put("nna_industryRisk", industries);
+                source.put("nna_industryRisk", Entity.getMap(industries));
                 source.put("sna_industryRiskDebugInfo", indRegRisk.industryDebugInfo);
                 source.put("ina_industry", industries.get(0).getIna_id());
                 if (industries.size() > 1)
