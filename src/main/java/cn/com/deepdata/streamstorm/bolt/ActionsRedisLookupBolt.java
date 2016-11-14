@@ -57,10 +57,12 @@ public class ActionsRedisLookupBolt extends AbstractRedisBolt {
 			jedisCommands = getInstance();
 			String key = "request_action_" + action;
 			Map<String, String> info = jedisCommands.hgetAll(key);
-			if (info != null) {
+			if (info != null && !info.isEmpty()) {
 				actionObj = new Action(action, info.get("dedup_type"), info.get("analyze_type"), info.get("index_name"), info.get("index_type"));
 			} else if (ActionController.actions.containsKey(action)) {
 				actionObj = ActionController.actions.get(action);
+			} else {
+				log.error("Unknow action:" + action);
 			}
 		} finally {
 			if (jedisCommands != null) {
