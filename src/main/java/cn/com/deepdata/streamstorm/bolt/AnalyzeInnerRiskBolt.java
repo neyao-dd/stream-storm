@@ -85,7 +85,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 
 	@Override
 	public void execute(Tuple input) {
-
+		clear();
 		Gson gson = new Gson();
 		Map<String, Object> attach = helper.getAttach(input);
 		Map<String, Object> source = helper.getDoc(input);
@@ -174,6 +174,11 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 		} finally {
 			helper.ack(input);
 		}
+	}
+
+	private void clear() {
+		rWeight.clear();
+		idMapping.clear();
 	}
 
 	private boolean inValidContent(String content) {
