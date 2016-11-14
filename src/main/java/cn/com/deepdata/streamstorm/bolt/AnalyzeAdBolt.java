@@ -2,6 +2,7 @@ package cn.com.deepdata.streamstorm.bolt;
 
 import cn.com.deepdata.commonutil.TermFrequencyInfo;
 
+import cn.com.deepdata.streamstorm.entity.Tag;
 import com.google.gson.Gson;
 
 import org.apache.commons.logging.Log;
@@ -37,17 +38,17 @@ public class AnalyzeAdBolt extends BaseRichBolt {
         Gson gson = new Gson();
         Map<String, Object> attach = helper.getAttach(tuple);
         Map<String, Object> source = helper.getDoc(tuple);
+        List<Tag> tags = helper.getTagList(source);
         Set<String> adWords = new HashSet<>();
         if (attach.containsKey("titleTermInfo") && attach.containsKey("contentTermInfo")) {
             TermFrequencyInfo titleTfi = gson.fromJson(attach.get("titleTermInfo").toString(), TermFrequencyInfo.class);
             TermFrequencyInfo contentTfi = gson.fromJson(attach.get("contentTermInfo").toString(), TermFrequencyInfo.class);
             String result = adFilter(adWords, titleTfi.termNature, contentTfi.termNature);
             if (result.length() > 2) {
-                attach.put("isAd", true);
-                attach.put("adWords", adWords);
-            } else
-                attach.put("isAd", false);
+                tags.add(new Tag("ad_key_machine"));
+            }
         }
+
         // TODO: 2016/10/20 tag
         helper.emitDoc(tuple, source, true);
         helper.ack(tuple);

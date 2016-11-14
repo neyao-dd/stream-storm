@@ -12,18 +12,34 @@ components:
         args:
           - "es.storm.bolt.flush.entries.size"
           - "50"
-#      - name: "put"
-#        args:
-#          - "es.mapping.include"
-#          - "source"
-#      - name: "put"
-#        args:
-#          - "es.mapping.exclude"
-#          - "action,attach"
       - name: "put"
         args:
           - "es.input.json"
           - "true"
+          
+  - id: "esUpdateConf"
+    className: "java.util.HashMap"
+    configMethods:
+      - name: "put"
+        args:
+          - "es.batch.size.bytes"
+          - "20mb"
+      - name: "put"
+        args:
+          - "es.storm.bolt.flush.entries.size"
+          - "50"
+      - name: "put"
+        args:
+          - "es.input.json"
+          - "true"
+      - name: "put"
+        args:
+          - "es.write.operation"
+          - "update"
+      - name: "put"
+        args:
+          - "es.mapping.id"
+          - "snp_id"
           
   - id: "esReaderConf"
     className: "java.util.HashMap"
