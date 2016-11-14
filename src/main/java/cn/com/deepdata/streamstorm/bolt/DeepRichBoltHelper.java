@@ -1,8 +1,10 @@
 package cn.com.deepdata.streamstorm.bolt;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import cn.com.deepdata.streamstorm.entity.Tag;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
@@ -38,11 +40,15 @@ public class DeepRichBoltHelper {
 
 	public String getDocTitle(Tuple input) {
 		Map<String, Object> doc = getDoc(input);
+		return getDocTitle(doc);
+		// TODO: 2016/11/8 for test to delete
+//		return getDoc(input).get("scc_title").toString();
+	}
+
+	public String getDocTitle(Map<String, Object> doc) {
 		String scc_title = getValue(doc, "scc_title");
 		String scm_title = getValue(doc, "scm_title");
 		return validString(scc_title) ? scc_title : (validString(scm_title) ? scm_title : "");
-		// TODO: 2016/11/8 for test to delete
-//		return getDoc(input).get("scc_title").toString();
 	}
 
 	private String getValue(Map<String, Object> map, String key) {
@@ -53,10 +59,20 @@ public class DeepRichBoltHelper {
 
 	public String getDocContent(Tuple input) {
 		Map<String, Object> doc = getDoc(input);
-		String scc_content = getValue(doc, "scc_content");
-		return validString(scc_content) ? scc_content : "";
+		return getDocContent(doc);
 		// TODO: 2016/11/8 for test to delete
 //		return getDoc(input).get("scc_content").toString();
+	}
+
+	public String getDocContent(Map<String, Object> doc) {
+		String scc_content = getValue(doc, "scc_content");
+		return validString(scc_content) ? scc_content : "";
+	}
+
+	public List<Tag> getTagList(Map<String, Object> source) {
+		if (source.containsKey("nna_tags"))
+			return (List<Tag>)source.get("nna_tags");
+		return new ArrayList<>();
 	}
 
 	public String getAction(Tuple input) {

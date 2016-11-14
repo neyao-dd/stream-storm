@@ -49,6 +49,10 @@ bolts:
       - ref: "analyzerJedisConf"
     parallelism: 1
 
+  - id: "simhash-analyze"
+    className: "cn.com.deepdata.streamstorm.bolt.SimHashBolt"
+    parallelism: 1
+
 #stream definitions
 streams:
   - name: "es --> cut"

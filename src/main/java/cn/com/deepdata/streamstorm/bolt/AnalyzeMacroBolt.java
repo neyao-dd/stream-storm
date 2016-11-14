@@ -1,5 +1,8 @@
 package cn.com.deepdata.streamstorm.bolt;
 
+import cn.com.deepdata.streamstorm.entity.Entity;
+import cn.com.deepdata.streamstorm.entity.Tag;
+import cn.com.deepdata.streamstorm.util.CommonUtil;
 import org.apache.storm.redis.bolt.AbstractRedisBolt;
 import org.apache.storm.redis.common.config.JedisClusterConfig;
 import org.apache.storm.redis.common.config.JedisPoolConfig;
@@ -12,6 +15,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.JedisCommands;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -45,30 +50,40 @@ public class AnalyzeMacroBolt extends AbstractRedisBolt {
                         OutputCollector collector) {
         super.prepare(map, topologyContext, collector);
         helper = new DeepRichBoltHelper(collector);
-        JedisCommands jedis = null;
+        JedisCommands jedisCommands = null;
         try {
-            jedis = getInstance();
-            countryFilter = jedis.smembers(macroCountryFilter);
-            regionFilter = jedis.smembers(macroRegionFilter);
-            countryNes = jedis.smembers(countryNecessary);
-            macroCommon = jedis.smembers(macroCommonFilter);
+            jedisCommands = getInstance();
+            countryFilter = jedisCommands.smembers(macroCountryFilter);
+            regionFilter = jedisCommands.smembers(macroRegionFilter);
+            countryNes = jedisCommands.smembers(countryNecessary);
+            macroCommon = jedisCommands.smembers(macroCommonFilter);
         } catch (Exception e) {
             logger.error(e.toString());
         } finally {
-            if (null != jedis)
-                returnInstance(jedis);
+            if (null != jedisCommands)
+                returnInstance(jedisCommands);
         }
     }
 
     @Override
     public void execute(Tuple input) {
         String content = helper.getDocTitle(input) + " " + helper.getDocContent(input);
-        containsMacroGlobal(content);
-        containsMacroLocal(content);
-        //TODO tag
-        helper.emit(input, true);
+        Map<String, Object> source = helper.getDoc(input);
+        List<Tag> tags = helper.getTagList(source);
+        if (containsMacroGlobal(content))
+            tags.add(new Tag("macro_analysis_global"));
+        if (containsMacroLocal(content))
+            tags.add(new Tag("macro_analysis_local"));
+        try {
+            source.put("nna_tags", Entity.getMap(tags));
+        } catch (Exception e) {
+            logger.error("set macro tags error...\n" + CommonUtil.getExceptionString(e));
+        }
+        helper.emitDoc(input, source, true);
         helper.ack(input);
     }
+
+
 
     private boolean containsMacroLocal(String art) {
         for (String word : regionFilter) {

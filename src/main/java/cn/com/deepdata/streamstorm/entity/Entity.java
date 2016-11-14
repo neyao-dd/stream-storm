@@ -15,8 +15,8 @@ import com.google.common.collect.Lists;
 
 public interface Entity {
 
-	public static Object getMap(Object value) throws IllegalArgumentException, IllegalAccessException, InvocationTargetException, IntrospectionException {
-		Object ret = value;
+	static Object getMap(Object value) throws IllegalArgumentException, IllegalAccessException, InvocationTargetException, IntrospectionException {
+		Object ret;
 		if (value instanceof Entity) {
 			ret = parseFields(value);
 		} else if (value instanceof Iterable) {
@@ -32,7 +32,7 @@ public interface Entity {
 	}
 
 	static Map<String, Object> parseFields(Object o) throws IllegalArgumentException, IllegalAccessException, IntrospectionException, InvocationTargetException {
-		Map<String, Object> result = new HashMap<String, Object>();
+		Map<String, Object> result = new HashMap<>();
 		Field[] declaredFields = o.getClass().getFields();
 		for (Field field : declaredFields) {
 			Object value = field.get(o);
