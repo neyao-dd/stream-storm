@@ -107,13 +107,13 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 				sb.append(result);
 			}
 			String content = source.get("scc_content").toString();
-			String[] segments = content.split("\r|\n");
 			if (inValidContent(content)) {
 				// TODO: 2016/10/20 返回都需要处理 ok
 				helper.emitAttach(input, attach, true);
 				helper.ack(input);
 				return;
 			}
+			String[] segments = content.split("\r|\n");
 			for (String segment : segments) {
 				if (!segment.isEmpty()) {
 					// TODO: 2016/10/20 参数
@@ -182,6 +182,8 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 	}
 
 	private boolean inValidContent(String content) {
+		if (!validString(content))
+			return false;
 		String[] segments = content.split("\r|\n");
 		return segments.length < 2 || segments.length > 500 || content.length() >= 32766;
 	}
@@ -722,7 +724,11 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 				System.arraycopy(list2, 0, sarray, 2, list2.length);
 				for (String word : sarray) {
 					for (int pos : offset.get(word)) {
-						wordpos.put(pos, word);
+						try {
+							wordpos.put(pos, word);
+						} catch (Exception e) {
+							logger.error("inner split error...the word is : {}, offset is : {}", word, offset.toString());
+						}
 					}
 					position.addAll(offset.get(word));
 				}
