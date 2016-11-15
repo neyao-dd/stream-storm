@@ -8,7 +8,7 @@ import java.util.List;
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 
-public class InnerRiskValue {
+public class InnerRiskValue implements Entity {
 	public List<ClientScore> clientScore;
 	public List<DescRiskScore> riskScore;
 	public List<Tag> tag;
