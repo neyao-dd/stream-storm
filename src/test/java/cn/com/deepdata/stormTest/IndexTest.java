@@ -2,13 +2,17 @@ package cn.com.deepdata.stormTest;
 
 import static org.elasticsearch.hadoop.cfg.ConfigurationOptions.ES_RESOURCE_WRITE;
 
+import java.beans.IntrospectionException;
+import java.lang.reflect.InvocationTargetException;
 import java.text.SimpleDateFormat;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.storm.shade.com.google.common.collect.Maps;
+import org.elasticsearch.hadoop.serialization.JdkBytesConverter;
 import org.elasticsearch.hadoop.serialization.builder.JdkValueWriter;
 import org.elasticsearch.storm.cfg.StormSettings;
 
@@ -17,6 +21,8 @@ import com.google.gson.Gson;
 
 import cn.com.deepdata.esstorm.BulkResponse;
 import cn.com.deepdata.esstorm.PartitionWriter;
+import cn.com.deepdata.streamstorm.entity.DescRiskScore;
+import cn.com.deepdata.streamstorm.entity.Entity;
 
 public class IndexTest {
 	private transient static Log log = LogFactory.getLog(IndexTest.class);;
@@ -33,12 +39,27 @@ public class IndexTest {
 		copy.put("es.port", "19200");
 		copy.put("es.input.json", "true");
 		copy.put("es.ser.writer.value.class", JdkValueWriter.class.getName());
+		copy.put("es.ser.writer.bytes.class", JdkBytesConverter.class.getName());
 		StormSettings settings = new StormSettings(copy);
 		PartitionWriter writer = PartitionWriter.createWriter(settings, 0, 1, log);
 
 		Map<String, Object> doc = Maps.newHashMap();
 		doc.put("scc_index", "storm-test");
 		doc.put("scc_content", "nnp");
+		DescRiskScore score = new DescRiskScore();
+		score.setDna_client_score(2.2);
+		score.setDna_score(3.3);
+		score.setDna_score_v2(3.5);
+		score.setIna_client_id(33);
+		score.setIna_id(100);
+		score.setSnc_uuid("abcd");
+		List<DescRiskScore> riskScore = Lists.newArrayList(score);
+		try {
+			doc.put("nna_risks", Entity.getMap(riskScore));
+		} catch (IllegalArgumentException | IllegalAccessException | InvocationTargetException | IntrospectionException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		doc.put("nnp_abnormal_items", Lists.newArrayList());
 		doc.put("tfc_time", format.format(System.currentTimeMillis()));
 		System.out.println(new Gson().toJson(doc));

@@ -137,7 +137,7 @@ public class EsBolt implements IRichBolt {
 			// written to ES
 			if (flush.get(index) || !esIdMapping.containsKey(index) || unrecoverableError.containsKey(index)) {
 				if (unrecoverableError.containsKey(index)) {
-					log.error(String.format("index error. doc:%s", new Gson().toJson(tuple.getValue(0))));
+					log.error(String.format("index error. doc:%s", tuple.getValue(0)));
 					log.error(unrecoverableError.get(index));
 				}
 				collector.fail(tuple);
