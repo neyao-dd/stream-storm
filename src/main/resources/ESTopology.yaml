@@ -51,8 +51,12 @@ bolts:
       - ref: "analyzerJedisConf"
     parallelism: 10
     
-  - id: "analyzer-inner"
-    className: "cn.com.deepdata.streamstorm.bolt.AnalyzeInnerRiskBolt"
+  - id: "calc-simhash"
+    className: "cn.com.deepdata.streamstorm.bolt.SimHashBolt"
+    parallelism: 3
+    
+  - id: "analyzer-web"
+    className: "cn.com.deepdata.streamstorm.bolt.AnalyzeWebRiskBolt"
     constructorArgs:
       - ref: "analyzerJedisConf"
     parallelism: 10
@@ -133,14 +137,20 @@ streams:
       type: SHUFFLE
       streamId: RiskInfo
 
-  - name: "cut-words --> analyzer-inner"
+  - name: "cut-words --> simhash"
     from: "cut-words"
-    to: "analyzer-inner"
+    to: "calc-simhash"
     grouping:
       type: SHUFFLE
 
-  - name: "analyzer-inner --> analyzer-indreg"
-    from: "analyzer-inner"
+  - name: "simhash --> analyzer-web"
+    from: "calc-simhash"
+    to: "analyzer-web"
+    grouping:
+      type: SHUFFLE
+
+  - name: "analyzer-web --> analyzer-indreg"
+    from: "analyzer-web"
     to: "analyzer-indreg"
     grouping:
       type: SHUFFLE
