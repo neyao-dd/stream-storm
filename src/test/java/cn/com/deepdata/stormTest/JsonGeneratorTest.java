@@ -8,12 +8,7 @@ import org.codehaus.jackson.JsonEncoding;
 import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.map.ObjectMapper;
 
-import cn.com.deepdata.streamstorm.entity.ClientScore;
-import cn.com.deepdata.streamstorm.entity.InnerRiskValue;
-
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.google.gson.Gson;
 
 public class JsonGeneratorTest {
 	private JsonGenerator jsonGenerator = null;
