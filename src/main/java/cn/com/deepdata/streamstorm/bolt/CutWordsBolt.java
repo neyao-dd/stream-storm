@@ -68,14 +68,14 @@ public class CutWordsBolt extends AbstractRedisBolt {
             if (inValidTime(lastUpdateTime)) {
                 localWords.addAll(jedisCommands.smembers(key));
                 changeWordNature(localWords, nature, UsrLibraryController.EChangeOprationType.kAddOpration);
-                logger.info("load {} words success, size : {}", wordType,clientWords.size());
+                logger.info("load {} words success, size : {}", wordType, getWordsSize(wordType));
             } else if (needUpdate(redisLastUpdate, lastUpdateTime)) {
                 Set<String> remoteWords = jedisCommands.smembers(key);
                 Set<String> remoteMore = diffSet(remoteWords, localWords);
                 Set<String> remoteLess = diffSet(localWords, remoteWords);
                 changeWordNature(remoteMore, nature, UsrLibraryController.EChangeOprationType.kAddOpration);
                 changeWordNature(remoteLess, nature, UsrLibraryController.EChangeOprationType.kDeleteOpration);
-                logger.info("update {} words success, size : {}", wordType, clientWords.size());
+                logger.info("update {} words success, size : {}", wordType, getWordsSize(wordType));
             }
             return redisLastUpdate;
         } catch (Exception e) {
@@ -85,6 +85,24 @@ public class CutWordsBolt extends AbstractRedisBolt {
                 returnInstance(jedisCommands);
         }
         return lastUpdateTime;
+    }
+
+    private int getWordsSize(String wordType) {
+        switch (wordType) {
+            case "risk":
+                return riskWords.size();
+            case "region":
+                return regionWords.size();
+            case "regionrisk":
+                return regionRiskWords.size();
+            case "industryrisk":
+                return industryRiskWords.size();
+            case "industrygenrisk":
+                return industryGenRiskWords.size();
+            default:
+                logger.info("{} is unknown type", wordType);
+                return 0;
+        }
     }
 
     private Set<String> diffSet(Set<String> s1, Set<String> s2) {
