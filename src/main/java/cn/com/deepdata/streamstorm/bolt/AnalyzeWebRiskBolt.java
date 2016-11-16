@@ -100,7 +100,7 @@ public class AnalyzeWebRiskBolt extends AbstractRedisBolt {
                 result = analyzeSegment(title, 0, clientInfo, client, clientScore, desCli);
                 sb.append(result);
             }
-            String content = source.get("scc_content").toString();
+            String content = helper.getDocContent(input);
             if (inValidContent(content)) {
                 // TODO: 2016/10/20 返回都需要处理 ok
                 helper.emitAttach(input, attach, true);
