@@ -2,9 +2,7 @@ package cn.com.deepdata.streamstorm.bolt;
 
 import cn.com.deepdata.commonutil.TermFrequencyInfo;
 import cn.com.deepdata.streamstorm.entity.*;
-import cn.com.deepdata.streamstorm.util.ClientUuidUtil;
 import cn.com.deepdata.streamstorm.util.CommonUtil;
-import cn.com.deepdata.streamstorm.util.RegionUtil;
 import cn.com.deepdata.streamstorm.util.TypeProvider;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -27,15 +25,11 @@ import java.util.*;
  */
 public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 	private static final Logger logger = LoggerFactory.getLogger(AnalyzeInnerRiskBolt.class);
-	// private static final String keystoneRegionApi = "/keystone/api/v1/geo/area/_query";
-	// private static final String keystoneIdApi = "/keystone/api/v1/company/_query?page=0&size=20000";
 	private String calcType;
 	private Map<Integer, Double> rWeight = new HashMap<>();
 	private TermFrequencyInfo titleTfi;
 	private List<TermFrequencyInfo> contentTfi;
 	private Map<Integer, String> idMapping = new HashMap<>();
-	// private String clientWordsCtrlVersion;
-	// private String riskWordsCtrlVersion;
 
 	double brandScore = 0.9;
 	double brandScore2 = 0.25;
@@ -85,7 +79,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 
 	@Override
 	public void execute(Tuple input) {
-		clear();
+        clear();
 		Gson gson = new Gson();
 		Map<String, Object> attach = helper.getAttach(input);
 		Map<String, Object> source = helper.getDoc(input);
@@ -268,8 +262,6 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 			Map<Integer, ConcreteRisk> rtInfo = analyzeSegmentRT(ctByCate, segNum);
 			if (!rtInfo.isEmpty()) {
 				List<ConcreteRisk> result = riskItemByClient(rtInfo, desCli, client, clientScore, segNum);
-				// if (segNum == 8)
-//				logger.info("@@@@@@@@@" + new Gson().toJson(result));
 				if (!result.isEmpty())
 					sb.append("segment:").append(segNum).append("\n").append(convertResult(result));
 			}
@@ -578,8 +570,6 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 				}
 			}
 		}
-		// if(segNum == 8)
-//		logger.info("@@@@@@@merge:" + new Gson().toJson(merge));
 		return riskItem(merge, desCli, segNum);
 	}
 
@@ -651,7 +641,11 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 		for (String wordBeh : mapBehavior.keySet()) {
 			for (String wordRisk : mapRisk.keySet()) {
 				if (isInTheSameSen(wordBeh, wordRisk, offset)) {
-					Map<String, String> map = minDistance(wordBeh, wordRisk, offset);
+					Map<String, String> map;
+					if (wordBeh.contains("*"))
+						map = minDistance(wordBeh, wordRisk, offset);
+					else
+						map = minDistance(wordRisk, wordBeh, offset);
 					int tmpMinDis = Integer.parseInt(map.get("min"));
 					if (tmpMinDis < minDistanceBR) {
 						minDistanceBR = tmpMinDis;
@@ -703,6 +697,7 @@ public class AnalyzeInnerRiskBolt extends AbstractRedisBolt {
 		return score < 0 ? 0 : score * cr.getWeight() * 100;
 	}
 
+	// TODO: 2016/11/14 简化
 	private Map<String, String> minDistance(String word1, String word2, Map<String, List<Integer>> offset) {
 		Map<String, String> result = new HashMap<>();
 		Gson gson = new Gson();
