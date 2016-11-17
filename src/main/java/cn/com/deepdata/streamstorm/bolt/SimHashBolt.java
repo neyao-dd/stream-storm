@@ -33,7 +33,7 @@ public class SimHashBolt extends BaseRichBolt {
 
     String getSite(Map<String, Object> source) {
         String site = "";
-        if (source.containsKey("snp_site")) {
+        if (source.containsKey("snp_site") && source.get("snp_site") != null) {
             site = source.get("snp_site").toString().trim();
         }
         return site;
@@ -75,7 +75,11 @@ public class SimHashBolt extends BaseRichBolt {
     }
 
     private boolean validSegment(boolean filter, String site, List<String> segment) {
-        return !filter && CommonUtil.validString(site) && !contains(segment, site);
+        return !filter && containsWebSite(site, segment);
+    }
+
+    private boolean containsWebSite(String site, List<String> segment) {
+        return !CommonUtil.validString(site) || !contains(segment, site);
     }
 
     private boolean contains(List<String> segment, String s) {
@@ -93,15 +97,9 @@ public class SimHashBolt extends BaseRichBolt {
         TermFrequencyInfo tfi;
         for (int i = 0; i < content.size(); i++) {
             List<String> segment = content.get(i);
-            boolean filter = false;
             if (segment.isEmpty())
                 continue;
-            for (String useless : uselessLineHead) {
-                if (segment.get(0).startsWith(useless)) {
-                    filter = true;
-                    break;
-                }
-            }
+            boolean filter = containsUselessHead(segment.get(0));
             if (validSegment(filter, site, segment)) {
                 tfi = contentTfi.get(i);
                 for (int x = 0; x < tfi.tokens.size(); x++) {
@@ -122,5 +120,12 @@ public class SimHashBolt extends BaseRichBolt {
             logger.error("calc simhash error...\n" + CommonUtil.getExceptionString(e));
             return "";
         }
+    }
+
+    private boolean containsUselessHead(String s) {
+        for (String useless : uselessLineHead)
+            if (s.startsWith(useless))
+                return true;
+        return false;
     }
 }
