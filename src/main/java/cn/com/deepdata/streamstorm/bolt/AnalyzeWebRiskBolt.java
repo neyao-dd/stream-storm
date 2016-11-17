@@ -200,7 +200,7 @@ public class AnalyzeWebRiskBolt extends AbstractRedisBolt {
 
     private boolean inValidContent(String content) {
         if (!validString(content))
-            return false;
+            return true;
         String[] segments = content.split("\r|\n");
         return segments.length < 2 || segments.length > 500 || content.length() >= 32766;
     }
