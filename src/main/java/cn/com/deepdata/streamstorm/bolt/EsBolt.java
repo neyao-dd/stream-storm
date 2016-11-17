@@ -147,8 +147,8 @@ public class EsBolt implements IRichBolt {
 					}.getType();
 					Gson gson = new Gson();
 					Map<String, Object> doc = gson.fromJson((String) tuple.getValue(0), mapType);
-					doc.put("snc_month_index", info.get("_index"));
-					doc.put("snc_month_id", info.get("_id"));
+					doc.put("sns_monthIndex", info.get("_index"));
+					doc.put("sns_monthId", info.get("_id"));
 					String sortTime = CommonUtil.getSortTime(doc);
 					doc.put("snp_index", info.get("_index").replace(sortTime.substring(0, 7), sortTime));
 					collector.emit(tuple, new Values(new Gson().toJson(doc)));
