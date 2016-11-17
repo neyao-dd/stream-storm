@@ -53,7 +53,7 @@ bolts:
     
   - id: "calc-simhash"
     className: "cn.com.deepdata.streamstorm.bolt.SimHashBolt"
-    parallelism: 3
+    parallelism: 10
     
   - id: "analyzer-web"
     className: "cn.com.deepdata.streamstorm.bolt.AnalyzeWebRiskBolt"
