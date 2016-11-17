@@ -4,8 +4,10 @@ import cn.com.deepdata.commonutil.TermFrequencyInfo;
 import cn.com.deepdata.streamstorm.entity.*;
 import cn.com.deepdata.streamstorm.util.CommonUtil;
 import cn.com.deepdata.streamstorm.util.TypeProvider;
+
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+
 import org.apache.storm.redis.bolt.AbstractRedisBolt;
 import org.apache.storm.redis.common.config.JedisPoolConfig;
 import org.apache.storm.task.OutputCollector;
@@ -15,6 +17,7 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import redis.clients.jedis.JedisCommands;
 
 import java.lang.reflect.Type;
@@ -30,6 +33,7 @@ public class AnalyzeWebRiskBolt extends AbstractRedisBolt {
     private TermFrequencyInfo titleTfi;
     private List<TermFrequencyInfo> contentTfi;
     private Map<Integer, String> idMapping = new HashMap<>();
+    private transient Boolean initialized;
 
     double brandScore = 0.9;
     double brandScore2 = 0.25;
@@ -55,6 +59,13 @@ public class AnalyzeWebRiskBolt extends AbstractRedisBolt {
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector collector) {
         super.prepare(map, topologyContext, collector);
         helper = new DeepRichBoltHelper(collector);
+        initialized = false;
+    }
+    
+    protected void lazyInit() {
+    	if (initialized)
+    		return;
+    	
         JedisCommands jedisCommands = null;
         try {
             jedisCommands = getInstance();
@@ -69,6 +80,7 @@ public class AnalyzeWebRiskBolt extends AbstractRedisBolt {
                 otherScore = Double.parseDouble(jedisCommands.get(RiskFields.otherScoreKey));
                 otherScore2 = Double.parseDouble(jedisCommands.get(RiskFields.otherScore2Key));
             }
+            initialized = true;
         } catch (Exception e) {
             logger.error(e.toString());
         } finally {
@@ -79,6 +91,7 @@ public class AnalyzeWebRiskBolt extends AbstractRedisBolt {
 
     @Override
     public void execute(Tuple input) {
+    	lazyInit();
         clear();
         Gson gson = new Gson();
         Map<String, Object> attach = helper.getAttach(input);
@@ -187,7 +200,7 @@ public class AnalyzeWebRiskBolt extends AbstractRedisBolt {
 
     private boolean inValidContent(String content) {
         if (!validString(content))
-            return false;
+            return true;
         String[] segments = content.split("\r|\n");
         return segments.length < 2 || segments.length > 500 || content.length() >= 32766;
     }

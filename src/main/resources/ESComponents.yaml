@@ -6,6 +6,10 @@ components:
     configMethods:
       - name: "put"
         args:
+          - "es.nodes"
+          - "${es.nodes}"
+      - name: "put"
+        args:
           - "es.batch.size.bytes"
           - "20mb"
       - name: "put"
@@ -20,6 +24,10 @@ components:
   - id: "esUpdateConf"
     className: "java.util.HashMap"
     configMethods:
+      - name: "put"
+        args:
+          - "es.nodes"
+          - "${es.nodes}"
       - name: "put"
         args:
           - "es.batch.size.bytes"
@@ -46,8 +54,8 @@ components:
     configMethods:
       - name: "put"
         args:
-          - "es.port"
-          - "19200"
+          - "es.nodes"
+          - "${es.nodes}"
       - name: "put"
         args:
           - "es.mapping.date.rich"
