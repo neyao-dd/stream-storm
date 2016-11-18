@@ -1,5 +1,6 @@
 package cn.com.deepdata.stormTest;
 
+import java.util.List;
 import java.util.Map;
 
 import org.apache.storm.Config;
@@ -10,6 +11,9 @@ import org.apache.storm.thrift.transport.TTransportException;
 import org.apache.storm.utils.DRPCClient;
 import org.apache.storm.utils.Utils;
 
+import com.google.common.collect.Lists;
+import com.google.gson.Gson;
+
 public class DRPCTest {
 	public static void main(String[] args) {
 		Config conf = new Config();
@@ -17,7 +21,8 @@ public class DRPCTest {
 		conf.putAll(defaultConfig);
 		try {
 			DRPCClient client = new DRPCClient(conf, "master", 3772);
-			String result = client.execute("risk-recalc", "http://slave1:9200/storm-test1/flumetype/AVhIjZp-_GvZumdm71ps");
+			List<String> docInfo = Lists.newArrayList("storm-test1", "flumetype", "AVhIjZp-_GvZumdm71ps");
+			String result = client.execute("risk-recalc", new Gson().toJson(docInfo));
 			System.out.println(result);
 		} catch (TTransportException e) {
 			// TODO Auto-generated catch block
