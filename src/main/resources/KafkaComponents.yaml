@@ -30,4 +30,21 @@ components:
       #   value: true
       - name: "scheme"
         ref: "stringMultiScheme"
+
+  - id: "kafkaRecalcSpoutConfig"
+    className: "org.apache.storm.kafka.SpoutConfig"
+    constructorArgs:
+      # brokerHosts
+      - ref: "zkHosts"
+      # topic
+      - "${kafka.recalc.topic}"
+      # zkRoot
+      - "${kafka.zk.root}"
+      # id
+      - "a9e88dc7-bbad-4621-93c4-60c2382d8042"
+    properties:
+      # - name: "ignoreZkOffsets"
+      #   value: true
+      - name: "scheme"
+        ref: "stringMultiScheme"
         

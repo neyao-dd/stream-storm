@@ -23,6 +23,12 @@ spouts:
       - ref: "kafkaSpoutConfig"
     parallelism: 8
 
+  - id: "kafka-recalc"
+    className: "org.apache.storm.kafka.KafkaSpout"
+    constructorArgs:
+      - ref: "kafkaRecalcSpoutConfig"
+    parallelism: 8
+    
 # bolt definitions
 bolts:
   - id: "parser"
@@ -110,9 +116,14 @@ bolts:
       - ref: "esUpsertConf"
       - false
     parallelism: 1
+    
+  - id: "recalc-prepro"
+    className: "cn.com.deepdata.streamstorm.bolt.DocPreprocessBolt"
+    parallelism: 2
 
 #stream definitions
 streams:
+# normal capture
   - name: "kafka --> parser"
     from: "kafka"
     to: "parser"
@@ -127,6 +138,19 @@ streams:
       
   - name: "action-lookup --> split-stream"
     from: "action-lookup"
+    to: "split-stream"
+    grouping:
+      type: SHUFFLE
+      
+# recalc docs
+  - name: "kafka-recalc --> recalc-prepro"
+    from: "kafka-recalc"
+    to: "recalc-prepro"
+    grouping:
+      type: SHUFFLE
+      
+  - name: "recalc-prepro --> split-stream"
+    from: "recalc-prepro"
     to: "split-stream"
     grouping:
       type: SHUFFLE

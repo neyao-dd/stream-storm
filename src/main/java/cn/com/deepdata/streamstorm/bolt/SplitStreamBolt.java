@@ -17,8 +17,7 @@ public class SplitStreamBolt extends BaseRichBolt {
 	private transient DeepRichBoltHelper helper;
 
 	@Override
-	public void prepare(Map stormConf, TopologyContext context,
-			OutputCollector collector) {
+	public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
 		// TODO Auto-generated method stub
 		helper = new DeepRichBoltHelper(collector);
 	}
@@ -27,24 +26,23 @@ public class SplitStreamBolt extends BaseRichBolt {
 	public void execute(Tuple input) {
 		// TODO Auto-generated method stub
 		Map<String, Object> attach = helper.getAttach(input);
-		if (!attach.containsKey("action")) {
-			helper.ack(input);
-			return;
-		}
 
-		Action actionObj = (Action) attach.get("action");
-		helper.emit(input, true, actionObj.analyzeType.name());
+		String streamId = "default";
+		if (attach.containsKey("action")) {
+			Action actionObj = (Action) attach.get("action");
+			streamId = actionObj.analyzeType.name();
+			helper.emit(input, true, streamId);
+		} else if (attach.containsKey("analyzeType")) {
+			streamId = (String) attach.get("analyzeType");
+			helper.emit(input, true, streamId);
+		}
 		helper.ack(input);
 	}
 
 	@Override
 	public void declareOutputFields(OutputFieldsDeclarer declarer) {
 		// TODO Auto-generated method stub
-		Arrays.asList(EAnalyzeType.values())
-				.stream()
-				.forEach(
-						type -> declarer.declareStream(type.name(), new Fields(
-								DeepRichBoltHelper.fields)));
+		Arrays.asList(EAnalyzeType.values()).stream().forEach(type -> declarer.declareStream(type.name(), new Fields(DeepRichBoltHelper.fields)));
 	}
 
 }
