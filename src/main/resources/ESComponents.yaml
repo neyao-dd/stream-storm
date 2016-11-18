@@ -21,7 +21,7 @@ components:
           - "es.input.json"
           - "true"
           
-  - id: "esUpdateConf"
+  - id: "esUpsertConf"
     className: "java.util.HashMap"
     configMethods:
       - name: "put"
@@ -43,7 +43,7 @@ components:
       - name: "put"
         args:
           - "es.write.operation"
-          - "update"
+          - "upsert"
       - name: "put"
         args:
           - "es.mapping.id"

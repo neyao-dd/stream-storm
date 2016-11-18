@@ -96,10 +96,18 @@ bolts:
     parallelism: 1
 
   - id: "es-bolt"
-    className: "cn.com.deepdata.streamstorm.bolt.EsBolt"
+    className: "org.elasticsearch.storm.EsBolt"
     constructorArgs:
       - "storm-test1/{snp_type}"
       - ref: "esSaverConf"
+      - false
+    parallelism: 1
+
+  - id: "es-upsert-bolt"
+    className: "org.elasticsearch.storm.EsBolt"
+    constructorArgs:
+      - "storm-test1/{snp_type}"
+      - ref: "esUpsertConf"
       - false
     parallelism: 1
 
@@ -192,3 +200,9 @@ streams:
     grouping:
       type: SHUFFLE
       streamId: BusinessInfo
+      
+  - name: "analyzer-business --> es-upsert-bolt"
+    from: "analyzer-business"
+    to: "es-upsert-bolt"
+    grouping:
+      type: SHUFFLE
