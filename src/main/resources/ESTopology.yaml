@@ -98,7 +98,6 @@ bolts:
     constructorArgs:
       - "storm-test2/{snp_type}"
       - ref: "esSaverConf"
-      - true
     parallelism: 1
 
   - id: "es-bolt"
@@ -106,7 +105,6 @@ bolts:
     constructorArgs:
       - "storm-test1/{snp_type}"
       - ref: "esSaverConf"
-      - false
     parallelism: 1
 
   - id: "es-upsert-bolt"
@@ -114,7 +112,6 @@ bolts:
     constructorArgs:
       - "storm-test1/{snp_type}"
       - ref: "esUpsertConf"
-      - false
     parallelism: 1
     
   - id: "recalc-prepro"

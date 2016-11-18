@@ -44,11 +44,11 @@ public class ESTopology {
 		esConf.put("es.batch.size.bytes", "20mb");
 		esConf.put("es.storm.bolt.flush.entries.size", "50");
 		builder.setBolt("es-bolt-month",
-				new EsBolt("storm-test2/flumetype", esConf, true))
+				new EsBolt("storm-test2/flumetype", esConf))
 				.addConfiguration(Config.TOPOLOGY_TICK_TUPLE_FREQ_SECS,
 						tickTupleFreqSecs).shuffleGrouping("parser");
 		builder.setBolt("es-bolt",
-				new EsBolt("storm-test1/flumetype", esConf, false))
+				new EsBolt("storm-test1/flumetype", esConf))
 				.addConfiguration(Config.TOPOLOGY_TICK_TUPLE_FREQ_SECS,
 						tickTupleFreqSecs).shuffleGrouping("es-bolt-month");
 

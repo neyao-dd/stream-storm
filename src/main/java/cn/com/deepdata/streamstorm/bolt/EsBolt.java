@@ -46,19 +46,16 @@ public class EsBolt implements IRichBolt {
 
 	private transient PartitionWriter writer;
 	private transient boolean flushOnTickTuple = true;
-	private boolean emitTuples = true;
 
 	private transient List<Tuple> inflightTuples = null;
 	private transient int numberOfEntries = 0;
 	private transient OutputCollector collector;
 
-	public EsBolt(String target, boolean emitTuples) {
-		this.emitTuples = emitTuples;
+	public EsBolt(String target) {
 		boltConfig.put(ES_RESOURCE_WRITE, target);
 	}
 
-	public EsBolt(String target, Map configuration, boolean emitTuples) {
-		this.emitTuples = emitTuples;
+	public EsBolt(String target, Map configuration) {
 		boltConfig.putAll(configuration);
 		boltConfig.put(ES_RESOURCE_WRITE, target);
 	}
@@ -141,18 +138,16 @@ public class EsBolt implements IRichBolt {
 				}
 				collector.fail(tuple);
 			} else {
-				if (emitTuples) {
-					Map<String, String> info = esIdMapping.get(index);
-					Type mapType = new TypeToken<Map<String, Object>>() {
-					}.getType();
-					Gson gson = new Gson();
-					Map<String, Object> doc = gson.fromJson((String) tuple.getValue(0), mapType);
-					doc.put("sns_monthIndex", info.get("_index"));
-					doc.put("sns_monthId", info.get("_id"));
-					String sortTime = CommonUtil.getSortTime(doc);
-					doc.put("snp_index", info.get("_index").replace(sortTime.substring(0, 7), sortTime));
-					collector.emit(tuple, new Values(new Gson().toJson(doc)));
-				}
+				Map<String, String> info = esIdMapping.get(index);
+				Type mapType = new TypeToken<Map<String, Object>>() {
+				}.getType();
+				Gson gson = new Gson();
+				Map<String, Object> doc = gson.fromJson((String) tuple.getValue(0), mapType);
+				doc.put("sns_monthIndex", info.get("_index"));
+				doc.put("sns_monthId", info.get("_id"));
+				String sortTime = CommonUtil.getSortTime(doc);
+				doc.put("snp_index", info.get("_index").replace(sortTime.substring(0, 7), sortTime));
+				collector.emit(tuple, new Values(new Gson().toJson(doc)));
 				collector.ack(tuple);
 			}
 		}
@@ -173,9 +168,7 @@ public class EsBolt implements IRichBolt {
 	}
 
 	public void declareOutputFields(OutputFieldsDeclarer declarer) {
-		if (emitTuples) {
-			declarer.declare(new Fields("json"));
-		}
+		declarer.declare(new Fields("json"));
 	}
 
 	public Map<String, Object> getComponentConfiguration() {
