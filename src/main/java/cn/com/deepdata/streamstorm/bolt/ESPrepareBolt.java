@@ -28,6 +28,7 @@ public class ESPrepareBolt extends BaseRichBolt {
 	private transient DeepRichBoltHelper helper;
 	private transient OutputCollector _collector;
 	private static final String monthStream = "Month";
+	private static final String upsertStream = "Upsert";
 	private transient ObjectMapper objectMapper;
 
 	@Override
@@ -84,7 +85,9 @@ public class ESPrepareBolt extends BaseRichBolt {
 		}
 		try {
 			Values values = new Values(objectMapper.writeValueAsString(source));
-			if (actionObj.indexType == EIndexType.ByMonthDay)
+			if (source.containsKey("snp_id"))
+				_collector.emit(upsertStream, values);
+			else if (actionObj.indexType == EIndexType.ByMonthDay)
 				_collector.emit(monthStream, values);
 			else
 				_collector.emit(values);
@@ -103,6 +106,7 @@ public class ESPrepareBolt extends BaseRichBolt {
 	@Override
 	public void declareOutputFields(OutputFieldsDeclarer declarer) {
 		// TODO Auto-generated method stub
+		declarer.declareStream(upsertStream, new Fields("json"));
 		declarer.declareStream(monthStream, new Fields("json"));
 		declarer.declare(new Fields("json"));
 	}
