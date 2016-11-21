@@ -1,13 +1,18 @@
 package cn.com.deepdata.streamstorm.bolt;
 
+import clojure.lang.Obj;
 import cn.com.deepdata.commonutil.AnsjTermAnalyzer;
+import cn.com.deepdata.commonutil.interlayer.sha1value.GetSha1Value;
 import cn.com.deepdata.streamstorm.entity.ChangeRecord;
 import cn.com.deepdata.streamstorm.entity.ChangedRisk;
 import cn.com.deepdata.streamstorm.entity.Company;
+import cn.com.deepdata.streamstorm.entity.RiskFields;
 import cn.com.deepdata.streamstorm.util.CommonUtil;
 
+import cn.com.deepdata.streamstorm.util.TypeProvider;
 import com.google.gson.Gson;
 
+import com.google.gson.reflect.TypeToken;
 import org.apache.storm.redis.bolt.AbstractRedisBolt;
 import org.apache.storm.redis.common.config.JedisPoolConfig;
 import org.apache.storm.task.OutputCollector;
@@ -21,6 +26,7 @@ import org.slf4j.LoggerFactory;
 
 import redis.clients.jedis.JedisCommands;
 
+import java.lang.reflect.Type;
 import java.util.*;
 
 /**
@@ -28,11 +34,10 @@ import java.util.*;
  */
 public class AnalyzeBusinessInfoBolt extends AbstractRedisBolt {
 	private static final Logger logger = LoggerFactory.getLogger(BaseRichBolt.class);
-	private static Map<String, Company> companyInfo;
-	// 可以存到redis中
-	private String s = "ע���ʱ�(��)���,�����±���,Ͷ���ܶ���,�Ǽǻ��ر��,��ҵ���ͱ��,��Ӫ��Χ���,Ͷ����(��Ȩ)���,��Ӫ����(Ӫҵ����)���,ס�����";
-	private String s2 = "1,2,3,07,2014年3.8活动,郭武强,-";
-	private Set<String> uselessItem = new HashSet<>();
+	private String BUSINESS_INDEX = "flume-company-info";
+	private String BUSINESS_CHANGE_INDEX = "flume-business-change";
+	private String COMMON_TYPE = "flumetype";
+	private int UNCERTAINTY_LEVEL = 4;
 	private transient DeepRichBoltHelper helper;
 
 	public AnalyzeBusinessInfoBolt(JedisPoolConfig config) {
@@ -42,14 +47,28 @@ public class AnalyzeBusinessInfoBolt extends AbstractRedisBolt {
 	@Override
 	public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
 		super.prepare(map, topologyContext, outputCollector);
-		uselessItem.addAll(Arrays.asList(s.split(",")));
-		uselessItem.addAll(Arrays.asList(s2.split(",")));
 		helper = new DeepRichBoltHelper(collector);
 	}
 
 	@Override
 	public void execute(Tuple tuple) {
-		helper.ack(tuple);
+		Map<String, Object> source = helper.getDoc(tuple);
+		Map<String, Object> attach = helper.getAttach(tuple);
+		try {
+			String name = getCompanyName(source);
+			if (!CommonUtil.validString(name)) {
+				helper.emitAttach(tuple, attach, true);
+				logger.error("business info doesn't have a name, analyze error.");
+				return;
+			}
+			analyze(tuple, helper);
+			helper.emitDoc(tuple, source, true);
+			helper.ack(tuple);
+		} catch (Exception e) {
+			logger.error("analyze business info error...\n{}", CommonUtil.getExceptionString(e));
+		} finally {
+			helper.ack(tuple);
+		}
 	}
 
 	@Override
@@ -57,117 +76,134 @@ public class AnalyzeBusinessInfoBolt extends AbstractRedisBolt {
 		outputFieldsDeclarer.declare(new Fields(DeepRichBoltHelper.fields));
 	}
 
-	// TODO: 2016/11/1
-	public void init() {
-		Gson gson = new Gson();
-		companyInfo = new HashMap<>();
+	private String getCompanyName(Map<String, Object> source) {
+		if (source.containsKey("sca_name"))
+			return source.get("sca_name").toString();
+		else if (source.containsKey("scc_name"))
+			return source.get("scc_name").toString();
+		return null;
+	}
+
+	private List<Map<String, Object>> getChangeRecords(Map<String, Object> source) {
+		if (source.containsKey("nnp_changerecords")) {
+			List<Map<String, Object>> records = (List<Map<String, Object>>) source.get("nnp_changerecords");
+			return records;
+		}
+		return null;
+	}
+
+	private Map<String, String> getItemInfo(String item) {
+		String itemInfo = redisGet(RiskFields.BUSINESS_TERM_INFO_PREFIX, item);
+		if (null == itemInfo)
+			return null;
+		return new Gson().fromJson(itemInfo, TypeProvider.type_mss);
+	}
+
+	private String getCompanyUuid(int id) {
+		String clientDetail = redisGet(RiskFields.CLIENT_ITEM_INFO_PREFIX, String.valueOf(id));
+		if (null == clientDetail)
+			return null;
+		Map<String, Object> detail =  new Gson().fromJson(clientDetail, TypeProvider.type_mso);
+		return detail.get("uuid").toString();
+	}
+
+	private int getCompanyId(String company) {
+		String clientInfo = redisGet(RiskFields.CLIENT_TERM_INFOS_PREFIX, company);
+		if (clientInfo == null)
+			return 0;
+		Type type = new TypeToken<List<Map<String, String>>>() {}.getType();
+		List<Map<String, String>> infoList =  new Gson().fromJson(clientInfo, type);
+		return Integer.parseInt(infoList.get(0).get("id"));
+	}
+
+	private String redisGet(String key, String value) {
 		JedisCommands jedisCommands = null;
 		try {
 			jedisCommands = getInstance();
-			// TODO: 2016/11/1 name
-			Set<String> riskLevel = jedisCommands.smembers("business_change_risk_level");
-			for (String rl : riskLevel) {
-				Company company = gson.fromJson(rl, Company.class);
-				companyInfo.put(company.name, company);
-			}
+			return jedisCommands.get(key + value);
 		} catch (Exception e) {
-			logger.error("companyInfo init() error..." + CommonUtil.getExceptionString(e));
+			logger.error("redis get error. key is {}, value is {}", key, value);
 		} finally {
-			if (jedisCommands != null)
+			if (null != jedisCommands)
 				returnInstance(jedisCommands);
 		}
+		return null;
 	}
 
-	public ChangedRisk analyze(ChangeRecord record) {
-		int level = 0;
-		String date = record.tfc_change_date;
-		String item = record.scc_change_item;
-		String type = "";
-		try {
-			if (uselessItem.contains(item)) {
-				return new ChangedRisk(level, 0, date, type);
+	private void analyze(Tuple tuple, DeepRichBoltHelper helper) {
+		Map<String, Object> source = helper.getDoc(tuple);
+		String name = getCompanyName(source);
+		String[] param = new String[1];
+		param[0] = name;
+		source.put("_index", BUSINESS_INDEX);
+		source.put("_type", COMMON_TYPE);
+		source.put("_id", GetSha1Value.getSha1Value(param));
+
+		List<Map<String, Object>> records = getChangeRecords(source);
+		if (null == records)
+			return;
+		for (Map<String, Object> record : records) {
+			String item = source.get("tfc_change_item").toString();
+			Map<String, String> itemInfo = getItemInfo(item);
+			if (itemInfo == null) {
+				itemInfo = getItemInfo(item.replace("变更", ""));
+				if (itemInfo == null)
+					continue;
 			}
-			// TODO: 2016/11/1
-			// try {
-			item = item.trim();
-			// } catch (Exception e) {
-			// logger.error("trim() error...");
-			// return new ChangedRisk(level, 0, date, type);
-			// }
-
-			if (companyInfo.containsKey(item)) {
-				try {
-					if ((level = companyInfo.get(item).level) == 0) {
-						double before = Double.parseDouble(record.scc_before_content);
-						double after = Double.parseDouble(record.scc_after_content);
-						level = after > before ? 3 : 5;
-					}
-				} catch (Exception e) {
-					level = 4;
-				}
-				type = companyInfo.get(item).type;
-			} else {
-				String subItem = item.replace("变更", "");
-				if (Company.allSubSen.containsKey(subItem)) {
-					String[] lt = Company.allSubSen.get(subItem).split(" ");
-					level = Integer.parseInt(lt[0]);
-					type = lt[1];
-				} else {
-					List<String> tokens = AnsjTermAnalyzer.simpleTokens(subItem);
-					boolean newWord = false;
-					for (String token : tokens) {
-						if (!Company.allTokens.contains(token)) {
-							logger.info("the new item is " + item);
-							// TODO: 2016/11/1 return
-							newWord = true;
-							break;
-						}
-					}
-					if (!newWord) {
-						for (String it : companyInfo.keySet()) {
-							int match = 0;
-							for (String token : tokens) {
-								if (companyInfo.get(it).tokens.contains(token)) {
-									match++;
-								}
-							}
-							if (match > 0 && tokens.size() - match <= 1) {
-								level = companyInfo.get(it).level;
-								type = companyInfo.get(it).type;
-							}
-						}
-					}
-					if (level == 0 && !newWord) {
-						logger.info("level error, item is " + item);
-					}
-				}
-			}
-		} catch (Exception e) {
-			logger.error("company analyze error..." + CommonUtil.getExceptionString(e));
-			logger.error("error map is" + record.toString());
+			int level = getRiskLevel(record, itemInfo);
+			Map<String, Object> businessChange = new HashMap<>();
+			businessChange.put("_index", BUSINESS_CHANGE_INDEX);
+			businessChange.put("_type", COMMON_TYPE);
+			businessChange.put("snc_origin_index", source.get("snp_index"));
+			businessChange.put("snc_origin_type", source.get("snp_type"));
+			businessChange.put("snc_origin_id", source.get("snp_id"));
+			businessChange.put("sca_name", getCompanyName(source));
+			businessChange.put("inp_seq_no", record.get("inp_seq_no"));
+			businessChange.put("sca_change_item", item);
+			businessChange.put("sca_risk_type", itemInfo.get("type"));
+			businessChange.put("tfp_save_time", source.get("tfp_save_time"));
+			businessChange.put("tfp_sort_time", record.get("tfc_change_date"));
+			businessChange.put("tfc_change_date", record.get("tfc_change_date"));
+			businessChange.put("scc_before_content", record.get("scc_before_content"));
+			businessChange.put("scc_after_content", record.get("scc_after_content"));
+			businessChange.put("inp_risk_level", level);
+			String[] calcId = {
+								item,
+								record.get("tfc_change_date").toString(),
+								record.get("scc_before_content").toString(),
+								record.get("scc_after_content").toString()
+							};
+			businessChange.put("_id", GetSha1Value.getSha1Value(calcId));
+			List<Map<String, Object>> risks = new ArrayList<>();
+			risks.add(getNnaRisk(name, itemInfo.get("type"), level));
+			businessChange.put("nna_risks", risks);
+			helper.emitDoc(tuple, businessChange, true);
 		}
-		ChangedRisk cr;
+
+	}
+
+	private Map<String, Object> getNnaRisk(String name, String type, int level) {
+		Map<String, Object> risk = new HashMap<>();
+		risk.put("sca_client_name", name);
+		risk.put("sca_risk_type", type);
+		risk.put("inp_risk_level", level);
+		int id = getCompanyId(name);
+		risk.put("ina_client_id", id);
+		risk.put("snc_client_uuid", getCompanyUuid(id));
+		return risk;
+	}
+
+	private int getRiskLevel (Map<String, Object> record, Map<String, String> itemInfo) {
+		int level = Integer.parseInt(itemInfo.get("level"));
+		if (level > 0)
+			return level;
 		try {
-			cr = new ChangedRisk(level, record.inp_seq_no, date, type);
+			double before = (double) record.get("scc_before_content");
+			double after = (double) record.get("scc_after_content");
+			return after > before ? 3 : 5;
 		} catch (Exception e) {
-			cr = new ChangedRisk(level, 0, date, type);
+			return UNCERTAINTY_LEVEL;
 		}
-		return cr;
 	}
 
-	public void writeEs() {
-
-	}
-
-	public void writeEsBusinessChange() {
-
-	}
-
-	public void deleteOldDoc() {
-
-	}
-
-	public void calcId() {
-
-	}
 }
