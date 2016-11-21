@@ -58,4 +58,16 @@ public class CommonUtil {
 		}
 		return sortTime;
 	}
+
+	public static String getSaveTime(Map<String, Object> doc) {
+		String saveTime = "unknown";
+		if (doc.containsKey("tfp_save_time")) {
+			saveTime = ((String) doc.get("tfp_save_time")).substring(0, 10);
+		}
+		if (saveTime.equals("unknown")) {
+			SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+			saveTime = sdf.format(System.currentTimeMillis());
+		}
+		return saveTime;
+	}
 }

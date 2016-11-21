@@ -146,7 +146,11 @@ public class EsBolt implements IRichBolt {
 				doc.put("sns_monthIndex", info.get("_index"));
 				doc.put("sns_monthId", info.get("_id"));
 				String sortTime = CommonUtil.getSortTime(doc);
-				doc.put("snp_index", info.get("_index").replace(sortTime.substring(0, 7), sortTime));
+				String saveTime = CommonUtil.getSaveTime(doc);
+				String newIndex = info.get("_index").replace(sortTime.substring(0, 7), saveTime);
+				if (newIndex.endsWith("_v1"))
+					newIndex = newIndex.substring(0, newIndex.length() - "_v1".length());
+				doc.put("snp_index", newIndex);
 				collector.emit(tuple, new Values(new Gson().toJson(doc)));
 				collector.ack(tuple);
 			}

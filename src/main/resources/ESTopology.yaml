@@ -96,21 +96,21 @@ bolts:
   - id: "es-bolt-month"
     className: "cn.com.deepdata.streamstorm.bolt.EsBolt"
     constructorArgs:
-      - "storm-test2/{snp_type}"
+      - "{snp_index}/{snp_type}"
       - ref: "esSaverConf"
     parallelism: 1
 
   - id: "es-bolt"
     className: "org.elasticsearch.storm.EsBolt"
     constructorArgs:
-      - "storm-test1/{snp_type}"
+      - "{snp_index}/{snp_type}"
       - ref: "esSaverConf"
     parallelism: 1
 
   - id: "es-upsert-bolt"
     className: "org.elasticsearch.storm.EsBolt"
     constructorArgs:
-      - "storm-test1/{snp_type}"
+      - "{snp_index}/{snp_type}"
       - ref: "esUpsertConf"
     parallelism: 1
     
@@ -133,8 +133,14 @@ streams:
     grouping:
       type: SHUFFLE
       
-  - name: "action-lookup --> split-stream"
+  - name: "action-lookup --> dedupliate"
     from: "action-lookup"
+    to: "dedupliate"
+    grouping:
+      type: SHUFFLE
+      
+  - name: "dedupliate --> split-stream"
+    from: "dedupliate"
     to: "split-stream"
     grouping:
       type: SHUFFLE

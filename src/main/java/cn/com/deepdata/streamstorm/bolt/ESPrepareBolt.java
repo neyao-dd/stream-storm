@@ -57,10 +57,13 @@ public class ESPrepareBolt extends BaseRichBolt {
 			List<String> indexNameComponents = Lists.newArrayList();
 			indexNameComponents.add("flume");
 			String sortTime = CommonUtil.getSortTime(source);
-			if (actionObj.indexType == EIndexType.ByMonth || actionObj.indexType == EIndexType.ByMonthDay)
+			String saveTime = CommonUtil.getSaveTime(source);
+			if (actionObj.indexType == EIndexType.ByMonth)
+				indexNameComponents.add(saveTime.substring(0, 7));
+			else if (actionObj.indexType == EIndexType.ByMonthDay)
 				indexNameComponents.add(sortTime.substring(0, 7));
 			else if (actionObj.indexType == EIndexType.ByDay)
-				indexNameComponents.add(sortTime);
+				indexNameComponents.add(saveTime);
 			String indexName = actionObj.indexName;
 			if (indexName.startsWith("-"))
 				indexName = indexName.substring(1);
