@@ -69,4 +69,6 @@ public class RiskFields {
     public static final String INDUSTRY_GEN_RISK_TERMS_SET = "sc_industrygenrisk_terms_set";
     public static final String INDUSTRY_GEN_RISK_TERM_INFOS_PREFIX = "sc_industrygenrisk_term_infos_";
     public static final String INDUSTRY_GEN_RISK_ITEM_INFO_PREFIX = "sc_industrygenrisk_item_info_";
+
+    public static final String BUSINESS_TERM_INFO_PREFIX = "sc_business_term_info_";
 }
