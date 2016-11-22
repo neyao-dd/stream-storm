@@ -87,7 +87,13 @@ bolts:
     className: "cn.com.deepdata.streamstorm.bolt.AnalyzeBusinessInfoBolt"
     constructorArgs:
       - ref: "analyzerJedisConf"
-    parallelism: 10
+    parallelism: 1
+
+  - id: "analyzer-court"
+    className: "cn.com.deepdata.streamstorm.bolt.CourtSessionBolt"
+    constructorArgs:
+      - ref: "analyzerJedisConf"
+    parallelism: 2
 
   - id: "es-prepare"
     className: "cn.com.deepdata.streamstorm.bolt.ESPrepareBolt"
@@ -211,9 +217,23 @@ streams:
     grouping:
       type: SHUFFLE
       streamId: BusinessInfo
-      
+
   - name: "analyzer-business --> es-prepare"
     from: "analyzer-business"
+    to: "es-prepare"
+    grouping:
+      type: SHUFFLE
+
+#court session
+  - name: "split-stream --> analyzer-court"
+    from: "split-stream"
+    to: "analyzer-court"
+    grouping:
+      type: SHUFFLE
+      streamId: CourtSession
+
+  - name: "analyzer-court --> es-prepare"
+    from: "analyzer-court"
     to: "es-prepare"
     grouping:
       type: SHUFFLE
