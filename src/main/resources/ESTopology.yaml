@@ -97,6 +97,9 @@ bolts:
 
   - id: "es-prepare"
     className: "cn.com.deepdata.streamstorm.bolt.ESPrepareBolt"
+    constructorArgs:
+      - "http://192.168.1.208:5160"
+      - "api/v1/task/finish_content"
     parallelism: 2
 
   - id: "es-bolt-month"
