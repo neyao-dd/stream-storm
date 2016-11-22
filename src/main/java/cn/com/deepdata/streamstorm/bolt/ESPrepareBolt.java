@@ -1,9 +1,12 @@
 package cn.com.deepdata.streamstorm.bolt;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import cn.com.deepdata.streamstorm.util.RESTUtil;
+import com.google.gson.Gson;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -27,15 +30,24 @@ public class ESPrepareBolt extends BaseRichBolt {
 	private transient static Logger logger = LoggerFactory.getLogger(ESPrepareBolt.class);
 	private transient DeepRichBoltHelper helper;
 	private transient OutputCollector _collector;
+	private transient List<Integer> taskIds;
+	private String radarHost;
+	private String taskIdPath;
 	private static final String monthStream = "Month";
 	private static final String upsertStream = "Upsert";
 	private transient ObjectMapper objectMapper;
+
+	public ESPrepareBolt(String host, String path) {
+		radarHost = host;
+		taskIdPath = path;
+	}
 
 	@Override
 	public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
 		// TODO Auto-generated method stub
 		_collector = collector;
 		helper = new DeepRichBoltHelper(collector);
+		taskIds = new ArrayList<>();
 		objectMapper = new ObjectMapper();
 	}
 
@@ -71,17 +83,25 @@ public class ESPrepareBolt extends BaseRichBolt {
 				indexName = indexName.substring(0, indexName.length() - 1);
 			indexNameComponents.add(indexName);
 			if (actionObj.name.equals("addContents")) {
+				if (source.containsKey("inp_task_id")) {
+					taskIds.add((int) (double) source.get("inp_task_id"));
+					if (taskIds.size() >= 50) {
+						postRadar(taskIds);
+						taskIds.clear();
+					}
+				}
 				String info_type = (String) source.get("inp_type");
-				if (info_type.equals("1")) {
-					indexNameComponents.add("news");
-				} else if (info_type.equals("2")) {
-					indexNameComponents.add("weibo");
-				} else if (info_type.equals("3")) {
-					indexNameComponents.add("weixin");
-				} else if (info_type.equals("4")) {
-					indexNameComponents.add("forum");
-				} else if (info_type.equals("5")) {
-					indexNameComponents.add("tieba");
+				switch (info_type) {
+					case "1":
+						indexNameComponents.add("news");
+					case "2":
+						indexNameComponents.add("weibo");
+					case "3":
+						indexNameComponents.add("weixin");
+					case "4":
+						indexNameComponents.add("forum");
+					case "5":
+						indexNameComponents.add("tieba");
 				}
 			}
 			source.put("snp_index", String.join("-", indexNameComponents));
@@ -114,8 +134,24 @@ public class ESPrepareBolt extends BaseRichBolt {
 		declarer.declare(new Fields("json"));
 	}
 
+	private void postRadar(List<Integer> ids) {
+		String json = String
+				.format("[{\"headers\":{\"action\":\"finishContents\", \"taskIds\":%s}, \"body\":\"\"}]",
+						(new Gson()).toJson(ids));
+		try {
+			String result =	RESTUtil.postRequest(radarHost, taskIdPath, json);
+			if (!result.contains("success"))
+				logger.error("post task ids return fail.");
+		} catch (Exception e) {
+			logger.error("post task ids error.\n{}", CommonUtil.getExceptionString(e));
+		}
+	}
+
 	@Override
 	public void cleanup() {
 		objectMapper = null;
+		if (!taskIds.isEmpty()) {
+			postRadar(taskIds);
+		}
 	}
 }
