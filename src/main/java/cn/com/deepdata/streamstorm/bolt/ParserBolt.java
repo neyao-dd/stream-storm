@@ -145,7 +145,7 @@ public class ParserBolt extends BaseRichBolt {
 					taskIds.clear();
 				}
 			}
-//			doc.remove("inp_task_id");
+			doc.remove("inp_task_id");
 			doc.keySet().stream().filter(k -> {
 				return k.indexOf("_") >= 0;
 			}).forEach(k -> {
