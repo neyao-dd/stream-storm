@@ -34,7 +34,7 @@ bolts:
   - id: "parser"
     className: "cn.com.deepdata.streamstorm.bolt.ParserBolt"
     constructorArgs:
-      - "http://192.168.1.208:5160"
+      - "${radar.server}"
       - "api/v1/task/finish_content"
     parallelism: 4
     
