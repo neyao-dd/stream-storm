@@ -47,22 +47,47 @@ public class CourtSessionBolt extends BaseRichBolt {
         List<String> plaintiffCompany = new ArrayList<>();
         List<String> defendantPerson = new ArrayList<>();
         List<String> defendantCompany = new ArrayList<>();
+        List<String> threePartPerson = new ArrayList<>();
+        List<String> threePartCompany = new ArrayList<>();
         String plaintiff = source.get("scc_plaintiff").toString();
         String defendant = source.get("scc_defendant").toString();
-        if (plaintiff == null || defendant == null)
-            return risks;
-        classify(plaintiff, plaintiffCompany, plaintiffPerson);
-        classify(defendant, defendantCompany, defendantPerson);
+        if (CommonUtil.validString(plaintiff)) {
+            if (plaintiff.contains("第三人"))
+                plaintiff = findThreePart(plaintiff, threePartCompany, threePartPerson);
+            classify(plaintiff, plaintiffCompany, plaintiffPerson);
+        }
+        if (CommonUtil.validString(defendant)) {
+            if (defendant.contains("第三人"))
+                defendant = findThreePart(defendant, threePartCompany, threePartPerson);
+            classify(defendant, defendantCompany, defendantPerson);
+        }
         risk.put("sca_plaintiff_person", plaintiffPerson);
         risk.put("sca_plaintiff_company", plaintiffCompany);
         risk.put("sca_defendant_person", defendantPerson);
         risk.put("sca_defendant_company", defendantCompany);
+        risk.put("sca_threePart_person", threePartPerson);
+        risk.put("sca_threePart_company", threePartCompany);
         risks.add(risk);
         return risks;
     }
 
+    private String findThreePart(String info, List<String> company, List<String> person) {
+        // "高卫华;第三人:东莞市大正贸易有限公司"
+        String[] subInfo;
+        if(info.contains("原审第三人"))
+            subInfo = info.split(";原审第三人:");
+        else
+            subInfo = info.split(";第三人:");
+        info = subInfo[0];
+        classify(subInfo[1], company, person);
+        return info;
+    }
+
     private void classify(String info, List<String> company, List<String> person) {
         if (CommonUtil.validString(info)) {
+            info = info.trim();
+            if (info.endsWith(";") || info.endsWith("；"))
+                info = info.substring(0, info.length() - 1);
             String[] entities = info.split(",|，");
             for (String entity : entities) {
                 if (entity.length() > 3)
