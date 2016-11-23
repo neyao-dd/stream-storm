@@ -39,9 +39,11 @@ public class DocPreprocessBolt extends BaseRichBolt {
 		} else if (!doc.containsKey("_index") || !doc.containsKey("_id")) {
 			log.error("need _index and _id in doc");
 		} else {
-			doc.put("analyzeType", doc.get("analyzeType"));
+			Map<String, Object> attach = Maps.newHashMap();
+			attach.put("analyzeType", doc.get("analyzeType"));
 			doc.remove("analyzeType");
-			helper.emit(input, doc, "Update", Maps.newHashMap(), true);
+			attach.put("deDupType", "None");
+			helper.emit(input, doc, "Update", attach, true);
 		}
 		helper.ack(input);
 	}
