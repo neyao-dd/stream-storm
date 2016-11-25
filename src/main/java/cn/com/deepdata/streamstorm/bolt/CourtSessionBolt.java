@@ -73,13 +73,17 @@ public class CourtSessionBolt extends BaseRichBolt {
 
     private String findThreePart(String info, List<String> company, List<String> person) {
         // "高卫华;第三人:东莞市大正贸易有限公司"
-        String[] subInfo;
-        if(info.contains("原审第三人"))
-            subInfo = info.split(";原审第三人:");
-        else
-            subInfo = info.split(";第三人:");
-        info = subInfo[0];
-        classify(subInfo[1], company, person);
+        try {
+            String[] subInfo;
+            if (info.contains("原审第三人"))
+                subInfo = info.split(";原审第三人:");
+            else
+                subInfo = info.split(";第三人:");
+            info = subInfo[0];
+            classify(subInfo[1], company, person);
+        } catch (Exception e) {
+            logger.error("findThreePart error, info is: {}", info);
+        }
         return info;
     }
 
