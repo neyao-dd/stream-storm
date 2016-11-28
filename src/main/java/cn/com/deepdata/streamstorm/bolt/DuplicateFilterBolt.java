@@ -12,6 +12,8 @@ import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 
@@ -23,11 +25,14 @@ import cn.com.deepdata.streamstorm.controller.EDeDupType;
 
 @SuppressWarnings({ "serial", "rawtypes" })
 public class DuplicateFilterBolt extends BaseRichBolt {
-	private transient static Log log = LogFactory.getLog(DuplicateFilterBolt.class);
+	private transient static Logger logger = LoggerFactory.getLogger(DuplicateFilterBolt.class);
 	private JedisPoolConfig jedisPoolConfig;
 	private transient JedisPool pool;
 	private transient DeepRichBoltHelper helper;
 	private transient BloomFilterController bloomFilter;
+
+	private transient int dupCount;
+	private transient int total;
 
 	public DuplicateFilterBolt(JedisPoolConfig config) {
 		// TODO Auto-generated constructor stub
@@ -39,6 +44,8 @@ public class DuplicateFilterBolt extends BaseRichBolt {
 		helper = new DeepRichBoltHelper(collector);
 		pool = new JedisPool(jedisPoolConfig.getHost(), jedisPoolConfig.getPort());
 		bloomFilter = new BloomFilterController();
+		dupCount = 0;
+		total = 0;
 	}
 
 	@Override
@@ -56,14 +63,15 @@ public class DuplicateFilterBolt extends BaseRichBolt {
 
 		boolean dup = false;
 		if (deDupType != EDeDupType.None) {
+			total++;
 			String strForDup = null;
 			if (deDupType == EDeDupType.ByUrl && doc.containsKey("sup_url"))
 				strForDup = (String) doc.get("sup_url");
 			else if (deDupType == EDeDupType.ByHash && doc.containsKey("snp_hash"))
 				strForDup = (String) doc.get("snp_hash");
 			else {
-				log.error("需要排重的event中缺少hash或url字段");
-				log.error("doc:" + new Gson().toJson(doc));
+				logger.error("需要排重的event中缺少hash或url字段");
+				logger.error("doc:" + new Gson().toJson(doc));
 			}
 			if (strForDup != null) {
 				try (Jedis jedis = pool.getResource()) {
@@ -73,6 +81,10 @@ public class DuplicateFilterBolt extends BaseRichBolt {
 		}
 		if (!dup)
 			helper.emit(input, true);
+		else
+			dupCount++;
+		if (total % 30 == 0)
+			logger.info("total count: {}, drop count: {}", total, dupCount);
 		helper.ack(input);
 	}
 

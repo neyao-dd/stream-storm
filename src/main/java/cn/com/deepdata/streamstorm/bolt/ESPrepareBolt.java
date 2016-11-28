@@ -78,14 +78,19 @@ public class ESPrepareBolt extends BaseRichBolt {
 				switch (info_type) {
 					case "1":
 						indexNameComponents.add("news");
+						break;
 					case "2":
 						indexNameComponents.add("weibo");
+						break;
 					case "3":
 						indexNameComponents.add("weixin");
+						break;
 					case "4":
 						indexNameComponents.add("forum");
+						break;
 					case "5":
 						indexNameComponents.add("tieba");
+						break;
 				}
 			}
 			source.put("snp_index", String.join("-", indexNameComponents));
