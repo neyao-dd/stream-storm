@@ -50,6 +50,8 @@ public class DuplicateFilterBolt extends BaseRichBolt {
 		if (attach.containsKey("action")) {
 			Action actionObj = (Action) attach.get("action");
 			deDupType = actionObj.deDupType;
+		} else if (attach.containsKey("deDupType")) {
+			deDupType = EDeDupType.valueOf((String) attach.get("deDupType"));
 		}
 
 		boolean dup = false;

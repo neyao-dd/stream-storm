@@ -89,6 +89,8 @@ public class CutWordsBolt extends AbstractRedisBolt {
 
     private int getWordsSize(String wordType) {
         switch (wordType) {
+            case "client":
+                return clientWords.size();
             case "risk":
                 return riskWords.size();
             case "region":

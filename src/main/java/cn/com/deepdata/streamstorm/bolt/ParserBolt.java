@@ -138,7 +138,7 @@ public class ParserBolt extends BaseRichBolt {
 			String action = doc.get("action");
 			doc.remove("action");
 			doc.remove("inp_radar_id");
-			if (doc.get("action").equals("addContents") && doc.containsKey("inp_task_id")) {
+			if (action.equals("addContents") && doc.containsKey("inp_task_id")) {
 				taskIds.add((int) (double) Double.parseDouble(doc.get("inp_task_id")));
 				if (taskIds.size() >= 50) {
 					postRadar(taskIds);
