@@ -111,9 +111,10 @@ public class AnalyzeBusinessInfoBolt extends AbstractRedisBolt {
 		String clientInfo = redisGet(RiskFields.CLIENT_TERM_INFOS_PREFIX, company);
 		if (clientInfo == null)
 			return 0;
-		Type type = new TypeToken<List<Map<String, String>>>() {}.getType();
-		List<Map<String, String>> infoList =  new Gson().fromJson(clientInfo, type);
-		return Integer.parseInt(infoList.get(0).get("id"));
+		Gson gson = new Gson();
+		List<String> infoList = gson.fromJson(clientInfo, TypeProvider.type_ls);
+		Map<String, String> info = gson.fromJson(infoList.get(0), TypeProvider.type_mss);
+		return Integer.parseInt(info.get("id"));
 	}
 
 	private String redisGet(String key, String value) {
@@ -143,43 +144,84 @@ public class AnalyzeBusinessInfoBolt extends AbstractRedisBolt {
 		if (null == records)
 			return;
 		for (Map<String, Object> record : records) {
-			String item = source.get("tfc_change_item").toString();
+			String item = secureGet(record, "scc_change_item");
+			if (null == item)
+				return;
+			String type, before, after;
+			before = secureGet(record, "scc_before_content");
+			after = secureGet(record, "scc_after_content");
+			if (item.equals("")) {
+				if (before != null && after != null && before.contains("：")) {
+					item = before.substring(0, before.indexOf("："));
+					if (!after.startsWith(item))
+						return;
+				} else
+					return;
+			}
 			Map<String, String> itemInfo = getItemInfo(item);
 			if (itemInfo == null) {
-				itemInfo = getItemInfo(item.replace("变更", ""));
+				String tmpItem = item;
+				if (endWithBrackets(item)) {
+					tmpItem = dropContentInBrackets(item);
+					itemInfo = getItemInfo(tmpItem);
+				}
+				if (tmpItem.endsWith("变更"))
+					itemInfo = getItemInfo(item.substring(0, tmpItem.length() - 2));
 				if (itemInfo == null)
-					continue;
+					logger.info("缺少工商变更item:{}", item);
 			}
 			int level = getRiskLevel(record, itemInfo);
 			Map<String, Object> businessChange = new HashMap<>();
 			businessChange.put("_index", BUSINESS_CHANGE_INDEX);
 			businessChange.put("_type", COMMON_TYPE);
-			businessChange.put("snc_origin_index", source.get("snp_index"));
-			businessChange.put("snc_origin_type", source.get("snp_type"));
-			businessChange.put("snc_origin_id", source.get("snp_id"));
+			businessChange.put("snc_origin_index", source.get("_index"));
+			businessChange.put("snc_origin_type", source.get("_type"));
+			businessChange.put("snc_origin_id", source.get("_id"));
 			businessChange.put("sca_name", getCompanyName(source));
 			businessChange.put("inp_seq_no", record.get("inp_seq_no"));
 			businessChange.put("sca_change_item", item);
-			businessChange.put("sca_risk_type", itemInfo.get("type"));
+			if (itemInfo == null)
+				type = "";
+			else
+				type = itemInfo.get("type");
+			businessChange.put("sca_risk_type", type);
 			businessChange.put("tfp_save_time", source.get("tfp_save_time"));
 			businessChange.put("tfp_sort_time", record.get("tfc_change_date"));
 			businessChange.put("tfc_change_date", record.get("tfc_change_date"));
-			businessChange.put("scc_before_content", record.get("scc_before_content"));
-			businessChange.put("scc_after_content", record.get("scc_after_content"));
+			businessChange.put("scc_before_content", before);
+			businessChange.put("scc_after_content", after);
 			businessChange.put("inp_risk_level", level);
 			String[] calcId = {
 								item,
 								record.get("tfc_change_date").toString(),
-								record.get("scc_before_content").toString(),
-								record.get("scc_after_content").toString()
+								before,
+								after
 							};
 			businessChange.put("_id", GetSha1Value.getSha1Value(calcId));
 			List<Map<String, Object>> risks = new ArrayList<>();
-			risks.add(getNnaRisk(name, itemInfo.get("type"), level));
+			risks.add(getNnaRisk(name, type, level));
 			businessChange.put("nna_risks", risks);
 			helper.emitDoc(tuple, businessChange, true);
 		}
 
+	}
+
+	private String secureGet(Map<String, Object> map, String key) {
+		if (map.containsKey(key))
+			return map.get(key).toString().trim();
+		return null;
+	}
+
+	private boolean endWithBrackets(String item) {
+		return item.endsWith("）") || item.endsWith(")");
+	}
+
+	private String dropContentInBrackets(String item) {
+		if (item.contains("（"))
+			item = item.replace("（", "(");
+		if (item.contains("("))
+			return item.substring(0, item.indexOf("("));
+		return item;
 	}
 
 	private Map<String, Object> getNnaRisk(String name, String type, int level) {
@@ -194,6 +236,8 @@ public class AnalyzeBusinessInfoBolt extends AbstractRedisBolt {
 	}
 
 	private int getRiskLevel (Map<String, Object> record, Map<String, String> itemInfo) {
+		if (itemInfo == null)
+			return 0;
 		int level = Integer.parseInt(itemInfo.get("level"));
 		if (level > 0)
 			return level;
