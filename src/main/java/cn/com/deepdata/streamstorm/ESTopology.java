@@ -38,7 +38,7 @@ public class ESTopology {
 		KafkaSpout kafkaSpout = new KafkaSpout(spoutConfig);
 
 		builder.setSpout("kafka", kafkaSpout, 8);
-		builder.setBolt("parser", new ParserBolt("http://192.168.1.208:5160", "api/v1/task/finish_content","true"), 4).shuffleGrouping("kafka");
+		builder.setBolt("parser", new ParserBolt("http://192.168.1.208:5160", "api/v1/task/finish_content"), 4).shuffleGrouping("kafka");
 
 		Map esConf = new HashMap();
 		esConf.put("es.batch.size.bytes", "20mb");
@@ -54,7 +54,7 @@ public class ESTopology {
 
 		Config conf = new Config();
 		conf.setDebug(false);
-
+		conf.put(Config.TOPOLOGY_TICK_TUPLE_FREQ_SECS, 10);
 		conf.setNumWorkers(8);
 
 		StormSubmitter.submitTopologyWithProgressBar("ES-Index", conf,

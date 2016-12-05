@@ -28,15 +28,13 @@ public class ParserBolt extends BaseRichBolt {
 	private transient List<Integer> taskIds;
 	private String radarHost;
 	private String taskIdPath;
-	private boolean post;
 	private final Type mapType = new TypeToken<Map<String, String>>() {
 	}.getType();
 	private transient SimpleDateFormat format;
 
-	public ParserBolt(String host, String path, String post) {
+	public ParserBolt(String host, String path) {
 		radarHost = host;
 		taskIdPath = path;
-		this.post = Boolean.parseBoolean(post);
 	}
 
 	public void prepare(Map stormConf, TopologyContext context,
@@ -143,8 +141,7 @@ public class ParserBolt extends BaseRichBolt {
 			if (action.equals("addContents") && doc.containsKey("inp_task_id")) {
 				taskIds.add((int) (double) Double.parseDouble(doc.get("inp_task_id")));
 				if (taskIds.size() >= 30) {
-					if (post)
-						postRadar(taskIds);
+					postRadar(taskIds);
 					taskIds.clear();
 				}
 			}
@@ -183,8 +180,8 @@ public class ParserBolt extends BaseRichBolt {
 						(new Gson()).toJson(ids));
 		try {
 			String result =	RESTUtil.postRequest(radarHost, taskIdPath, json);
-			if (!result.contains("success"))
-				logger.error("post task ids return fail.");
+			if (!result.toLowerCase().contains("success"))
+				logger.error("post task ids return fail. result:{}", result);
 		} catch (Exception e) {
 			logger.error("post task ids error.\n{}", CommonUtil.getExceptionString(e));
 		}

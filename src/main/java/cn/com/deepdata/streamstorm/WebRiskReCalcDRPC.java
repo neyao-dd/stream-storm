@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 
+import cn.com.deepdata.streamstorm.bolt.*;
 import org.apache.commons.cli.BasicParser;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -19,12 +20,6 @@ import org.apache.storm.generated.AlreadyAliveException;
 import org.apache.storm.generated.AuthorizationException;
 import org.apache.storm.generated.InvalidTopologyException;
 import org.apache.storm.redis.common.config.JedisPoolConfig;
-
-import cn.com.deepdata.streamstorm.bolt.AnalyzeIndRegRiskBolt;
-import cn.com.deepdata.streamstorm.bolt.AnalyzeWebRiskBolt;
-import cn.com.deepdata.streamstorm.bolt.CutWordsBolt;
-import cn.com.deepdata.streamstorm.bolt.ESLookUpBolt;
-import cn.com.deepdata.streamstorm.bolt.ReCalcDRPCResutlBolt;
 
 public class WebRiskReCalcDRPC {
 	static final String OPTION_CONFIG = "conf";
@@ -54,6 +49,8 @@ public class WebRiskReCalcDRPC {
 		builder.addBolt(new CutWordsBolt(jedisCfg), 5).shuffleGrouping();
 		builder.addBolt(new AnalyzeWebRiskBolt(jedisCfg), 5).shuffleGrouping();
 		builder.addBolt(new AnalyzeIndRegRiskBolt(jedisCfg), 5).shuffleGrouping();
+		//prepare
+//		builder.addBolt(new EsBolt( );
 		builder.addBolt(new ReCalcDRPCResutlBolt(), 1).shuffleGrouping();
 
 		Config conf = new Config();
