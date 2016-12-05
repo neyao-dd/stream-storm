@@ -181,7 +181,7 @@ public class ParserBolt extends BaseRichBolt {
 		try {
 			String result =	RESTUtil.postRequest(radarHost, taskIdPath, json);
 			if (!result.toLowerCase().contains("success"))
-				logger.error("post task ids return fail. result:{}", result);
+				logger.warn("post task ids return fail. result:{}", result);
 		} catch (Exception e) {
 			logger.error("post task ids error.\n{}", CommonUtil.getExceptionString(e));
 		}
