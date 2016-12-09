@@ -12,8 +12,11 @@ import org.apache.storm.tuple.Tuple;
 
 import cn.com.deepdata.streamstorm.controller.Action;
 import cn.com.deepdata.streamstorm.controller.EAnalyzeType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SplitStreamBolt extends BaseRichBolt {
+	static final Logger logger = LoggerFactory.getLogger(SplitStreamBolt.class);
 	private transient DeepRichBoltHelper helper;
 
 	@Override

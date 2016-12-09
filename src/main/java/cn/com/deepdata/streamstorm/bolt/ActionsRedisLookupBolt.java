@@ -62,7 +62,7 @@ public class ActionsRedisLookupBolt extends AbstractRedisBolt {
 			} else if (ActionController.actions.containsKey(action)) {
 				actionObj = ActionController.actions.get(action);
 			} else {
-				log.error("Unknow action:" + action);
+				log.error("unknown action:" + action);
 			}
 		} finally {
 			if (jedisCommands != null) {
