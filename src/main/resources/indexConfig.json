@@ -1,0 +1,460 @@
+{
+    "settings" : {
+      "index" : {
+        "analysis" : {
+          "analyzer" : {
+            "myurl" : {
+              "type" : "custom",
+              "filter" : "lowercase",
+              "tokenizer" : "urltokenizer"
+            }
+          },
+          "tokenizer" : {
+            "urltokenizer" : {
+              "pattern" : "(\\w+)",
+              "type" : "pattern",
+              "group" : "0"
+            }
+          }
+        },
+        "number_of_replicas" : "1",
+        "number_of_shards" : "5"
+      }
+    },
+    "mappings": {
+      "flumetype": {
+        "dynamic_templates": [
+          {
+            "template_sup_url": {
+              "mapping": {
+                "analyzer": "myurl",
+                "type": "string",
+                "fields": {
+                  "org": {
+                    "index": "not_analyzed",
+                    "type": "string"
+                  }
+                }
+              },
+              "match": "sup_url",
+              "match_mapping_type": "string"
+            }
+          },
+          {
+            "template_sca_region": {
+              "mapping": {
+                "index_analyzer": "ansj_index",
+                "search_analyzer": "ansj_query",
+                "type": "string",
+                "fields": {
+                  "org": {
+                    "index": "not_analyzed",
+                    "type": "string"
+                  }
+                }
+              },
+              "match": "sca_region",
+              "match_mapping_type": "string"
+            }
+          },
+          {
+            "template_sca_name": {
+              "mapping": {
+                "index_analyzer": "ansj_index",
+                "search_analyzer": "ansj_query",
+                "type": "string",
+                "fields": {
+                  "org": {
+                    "index": "not_analyzed",
+                    "type": "string"
+                  }
+                }
+              },
+              "match": "sca_name",
+              "match_mapping_type": "string"
+            }
+          },
+          {
+               "template_sca_any": {
+                  "mapping": {
+                      "index_analyzer": "ansj_index",
+                      "search_analyzer": "ansj_query",
+                      "type": "string",
+                      "fields": {
+                          "org": {
+                             "index": "not_analyzed", 
+                              "type": "string" 
+                          }
+                      } 
+                 },
+                "match": "sca_*", 
+                "match_mapping_type": "string"
+              } 
+          },
+          {
+            "template_so": {
+              "mapping": {
+                "index_analyzer": "ansj_index",
+                "search_analyzer": "ansj_query",
+                "type": "string",
+                "fields": {
+                  "org": {
+                    "index": "not_analyzed",
+                    "type": "string"
+                  }
+                }
+              },
+              "match": "so*",
+              "match_mapping_type": "string"
+            }
+          },
+          {
+            "template1": {
+              "mapping": {
+                "analyzer": "myurl",
+                "type": "string"
+              },
+              "match": "su*",
+              "match_mapping_type": "string"
+            }
+          },
+          {
+            "template2": {
+              "mapping": {
+                "index": "not_analyzed",
+                "type": "string"
+              },
+              "match": "sn*",
+              "match_mapping_type": "string"
+            }
+          },
+          {
+            "template3": {
+              "mapping": {
+                "type": "long"
+              },
+              "match": "l*"
+            }
+          },
+          {
+            "template4": {
+              "mapping": {
+                "index_analyzer": "ansj_index",
+                "search_analyzer": "ansj_query",
+                "type": "string"
+              },
+              "match": "sc*",
+              "match_mapping_type": "string"
+            }
+          },
+          {
+            "template5": {
+              "mapping": {
+                "type": "boolean"
+              },
+              "match": "b*"
+            }
+          },
+          {
+            "template6": {
+              "mapping": {
+                "type": "integer"
+              },
+              "match": "i*"
+            }
+          },
+          {
+            "template7": {
+              "mapping": {
+                "type": "double"
+              },
+              "match": "d*"
+            }
+          },
+          {
+            "template8": {
+              "mapping": {
+                "type": "float"
+              },
+              "match": "f*"
+            }
+          },
+          {
+            "template9": {
+              "mapping": {
+                "type": "nested"
+              },
+              "match": "n*"
+            }
+          },
+          {
+            "template10": {
+              "mapping": {
+                "format": "yyyy-MM-dd HH:mm:ss",
+                "type": "date"
+              },
+              "match": "tf*"
+            }
+          },
+          {
+            "template11": {
+              "mapping": {
+                "format": "yyyy-MM-dd",
+                "type": "date"
+              },
+              "match": "td*"
+            }
+          },
+          {
+            "template12": {
+              "mapping": {
+                "format": "HH:mm:ss",
+                "type": "date"
+              },
+              "match": "tt*"
+            }
+          }
+        ],
+        "date_detection": false,
+        "properties" : {
+          "dna_max_risk" : {
+            "type" : "double"
+          },
+          "dna_regionRisk" : {
+            "type" : "double"
+          },
+          "dna_total_risk" : {
+            "type" : "double"
+          },
+          "ina_risk_version" : {
+            "type" : "integer"
+          },
+          "inp_start_point_id" : {
+            "type" : "integer"
+          },
+          "inp_type" : {
+            "type" : "integer"
+          },
+          "nna_clients" : {
+            "type" : "nested",
+            "properties" : {
+              "dna_risk_score" : {
+                "type" : "double"
+              },
+              "dna_risk_score_v2" : {
+                "type" : "double"
+              },
+              "dna_score" : {
+                "type" : "double"
+              },
+              "ina_id" : {
+                "type" : "integer"
+              },
+              "snc_uuid" : {
+                "type" : "string",
+                "index" : "not_analyzed"
+              }
+            }
+          },
+          "nna_regions" : {
+            "type" : "nested",
+            "properties" : {
+              "bna_analyze" : {
+                "type" : "boolean"
+              },
+              "dna_score" : {
+                "type" : "double"
+              },
+              "ina_id" : {
+                "type" : "integer"
+              },
+              "ina_pid" : {
+                "type" : "integer"
+              },
+              "sca_region" : {
+                "type" : "string",
+                "index_analyzer" : "ansj_index",
+                "search_analyzer" : "ansj_query",
+                "fields" : {
+                  "org" : {
+                    "type" : "string",
+                    "index" : "not_analyzed"
+                  }
+                }
+              },
+              "snc_uuid" : {
+                "type" : "string",
+                "index" : "not_analyzed"
+              }
+            }
+          },
+          "nna_risks" : {
+            "type" : "nested",
+            "properties" : {
+              "dna_client_score" : {
+                "type" : "double"
+              },
+              "dna_score" : {
+                "type" : "double"
+              },
+              "dna_score_v2" : {
+                "type" : "double"
+              },
+              "ina_client_id" : {
+                "type" : "integer"
+              },
+              "ina_id" : {
+                "type" : "integer"
+              },
+              "snc_uuid" : {
+                "type" : "string",
+                "index" : "not_analyzed"
+              }
+            }
+          },
+          "nna_tags" : {
+            "type" : "nested",
+            "properties" : {
+              "sna_tag" : {
+                "type" : "string",
+                "index" : "not_analyzed"
+              }
+            }
+          },
+          "scc_author" : {
+            "type" : "string",
+            "index_analyzer" : "ansj_index",
+            "search_analyzer" : "ansj_query"
+          },
+          "scc_content" : {
+            "type" : "string",
+            "index_analyzer" : "ansj_index",
+            "search_analyzer" : "ansj_query"
+          },
+          "scc_editor" : {
+            "type" : "string",
+            "index_analyzer" : "ansj_index",
+            "search_analyzer" : "ansj_query"
+          },
+          "scc_keywords" : {
+            "type" : "string",
+            "index_analyzer" : "ansj_index",
+            "search_analyzer" : "ansj_query"
+          },
+          "scc_source" : {
+            "type" : "string",
+            "index_analyzer" : "ansj_index",
+            "search_analyzer" : "ansj_query"
+          },
+          "scc_title" : {
+            "type" : "string",
+            "index_analyzer" : "ansj_index",
+            "search_analyzer" : "ansj_query"
+          },
+          "scm_author" : {
+            "type" : "string",
+            "index_analyzer" : "ansj_index",
+            "search_analyzer" : "ansj_query"
+          },
+          "scm_description" : {
+            "type" : "string",
+            "index_analyzer" : "ansj_index",
+            "search_analyzer" : "ansj_query"
+          },
+          "scm_keywords" : {
+            "type" : "string",
+            "index_analyzer" : "ansj_index",
+            "search_analyzer" : "ansj_query"
+          },
+          "scm_title" : {
+            "type" : "string",
+            "index_analyzer" : "ansj_index",
+            "search_analyzer" : "ansj_query"
+          },
+          "scp_channel" : {
+            "type" : "string",
+            "index_analyzer" : "ansj_index",
+            "search_analyzer" : "ansj_query"
+          },
+          "sna_clientDebugInfo2" : {
+            "type" : "string",
+            "index" : "not_analyzed"
+          },
+          "sna_regionRiskDebugInfo" : {
+            "type" : "string",
+            "index" : "not_analyzed"
+          },
+          "sna_riskDebugInfo" : {
+            "type" : "string",
+            "index" : "not_analyzed"
+          },
+          "sna_simhash" : {
+            "type" : "string",
+            "index" : "not_analyzed"
+          },
+          "snm_charset" : {
+            "type" : "string",
+            "index" : "not_analyzed"
+          },
+          "snm_content-type" : {
+            "type" : "string",
+            "index" : "not_analyzed"
+          },
+          "snm_expires" : {
+            "type" : "string",
+            "index" : "not_analyzed"
+          },
+          "snp_category" : {
+            "type" : "string",
+            "index" : "not_analyzed"
+          },
+          "snp_city" : {
+            "type" : "string",
+            "index" : "not_analyzed"
+          },
+          "snp_index" : {
+            "type" : "string",
+            "index" : "not_analyzed"
+          },
+          "snp_site" : {
+            "type" : "string",
+            "index" : "not_analyzed"
+          },
+          "snp_sub_cat1" : {
+            "type" : "string",
+            "index" : "not_analyzed"
+          },
+          "snp_sub_cat2" : {
+            "type" : "string",
+            "index" : "not_analyzed"
+          },
+          "snp_type" : {
+            "type" : "string",
+            "index" : "not_analyzed"
+          },
+          "sup_url" : {
+            "type" : "string",
+            "analyzer" : "myurl",
+            "fields" : {
+              "org" : {
+                "type" : "string",
+                "index" : "not_analyzed"
+              }
+            }
+          },
+          "tfc_time" : {
+            "type" : "date",
+            "format" : "yyyy-MM-dd HH:mm:ss"
+          },
+          "tfp_save_time" : {
+            "type" : "date",
+            "format" : "yyyy-MM-dd HH:mm:ss"
+          },
+          "tfp_sort_time" : {
+            "type" : "date",
+            "format" : "yyyy-MM-dd HH:mm:ss"
+          }
+       }    
+    }
+  }
+}
