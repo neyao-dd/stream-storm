@@ -1,12 +1,13 @@
 package cn.com.deepdata.streamstorm.bolt;
 
 import java.io.IOException;
-import java.util.ArrayList;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Deque;
 import java.util.List;
 import java.util.Map;
 
 import cn.com.deepdata.streamstorm.util.RESTUtil;
-import com.google.gson.Gson;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -33,6 +34,14 @@ public class ESPrepareBolt extends BaseRichBolt {
 	private static final String monthStream = "Month";
 	private static final String upsertStream = "Upsert";
 	private transient ObjectMapper objectMapper;
+	private final String esNodes;
+	private final String esMapping;
+	private transient Deque<String> createdIndexes;
+
+	public ESPrepareBolt(String esNodes, String esMappingFile) throws IOException {
+		this.esNodes = esNodes;
+		this.esMapping = new String(Files.readAllBytes(Paths.get(esMappingFile)));
+	}
 
 	@Override
 	public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
@@ -40,6 +49,27 @@ public class ESPrepareBolt extends BaseRichBolt {
 		_collector = collector;
 		helper = new DeepRichBoltHelper(collector);
 		objectMapper = new ObjectMapper();
+		createdIndexes = Lists.newLinkedList();
+	}
+
+	protected void createIndexIfMissing(String name) {
+		if (createdIndexes.contains(name))
+			return;
+		String url = String.format("http://%s/%s", esNodes, name);
+		Boolean exist = false;
+		try {
+			RESTUtil.getRequest(url);
+		} catch (RuntimeException e) {
+			exist = e.getMessage().indexOf("404") == -1;
+		}
+		if (!exist) {
+			logger.info("Index " + name + " is missing. Create it!");
+			url = String.format("http://%s", esNodes);
+			RESTUtil.postRequest(url, name, esMapping);
+		}
+		createdIndexes.addLast(name);
+		if (createdIndexes.size() > 50)
+			createdIndexes.removeFirst();
 	}
 
 	@Override
@@ -96,6 +126,7 @@ public class ESPrepareBolt extends BaseRichBolt {
 			source.put("snp_index", String.join("-", indexNameComponents));
 		}
 		try {
+			createIndexIfMissing(source.get("snp_index").toString());
 			Values values = new Values(objectMapper.writeValueAsString(source));
 			if (source.containsKey("snp_id"))
 				_collector.emit(upsertStream, values);

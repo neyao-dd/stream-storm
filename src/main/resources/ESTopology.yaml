@@ -100,7 +100,11 @@ bolts:
 
   - id: "es-prepare"
     className: "cn.com.deepdata.streamstorm.bolt.ESPrepareBolt"
-    parallelism: 2
+    # 并行度为1，为了防止多线程创建索引时的冲突
+    parallelism: 1
+    constructorArgs:
+      - "${es.nodes}"
+      - "conf/indexConfig.json"
 
   - id: "es-bolt-month"
     className: "cn.com.deepdata.streamstorm.bolt.EsBolt"
