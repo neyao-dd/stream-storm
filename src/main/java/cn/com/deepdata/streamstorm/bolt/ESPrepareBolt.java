@@ -59,13 +59,18 @@ public class ESPrepareBolt extends BaseRichBolt {
 		Boolean exist = false;
 		try {
 			RESTUtil.getRequest(url);
+			exist = true;
 		} catch (RuntimeException e) {
 			exist = e.getMessage().indexOf("404") == -1;
 		}
 		if (!exist) {
 			logger.info("Index " + name + " is missing. Create it!");
 			url = String.format("http://%s", esNodes);
-			RESTUtil.postRequest(url, name, esMapping);
+			try {
+				RESTUtil.postRequest(url, name, esMapping);
+			} catch (RuntimeException e) {
+
+			}
 		}
 		createdIndexes.addFirst(name);
 		if (createdIndexes.size() > 50)
