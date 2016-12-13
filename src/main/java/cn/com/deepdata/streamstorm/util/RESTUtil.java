@@ -18,23 +18,35 @@ public class RESTUtil {
     private static Client client = Client.create();
 
     public static String getRequest(String host) {
-        WebResource webResource = client.resource(host);
-        ClientResponse response = webResource.accept("application/json").get(ClientResponse.class);
-        if (response.getStatus() != 200) {
-            throw new RuntimeException("Failed : HTTP error code : " + response.getStatus());
+        ClientResponse response = null;
+        try {
+            WebResource webResource = client.resource(host);
+            response = webResource.accept("application/json").get(ClientResponse.class);
+            if (response.getStatus() != 200) {
+                throw new RuntimeException("Failed : HTTP error code : " + response.getStatus());
+            }
+            return response.getEntity(String.class);
+        } finally {
+            if (null != response)
+                response.close();
         }
-        return response.getEntity(String.class);
     }
 
     public static String postRequest(String host, String path, String json) {
-        WebResource webResource = client.resource(host);
-        ClientResponse response = webResource.path(path).accept("application/json")
-                .type("application/json").post(ClientResponse.class, json);
-        if (response.getStatus() != 200) {
-            throw new RuntimeException("Failed : HTTP error code : "
-                    + response.getStatus());
+        ClientResponse response = null;
+        try {
+            WebResource webResource = client.resource(host);
+            response = webResource.path(path).accept("application/json")
+                    .type("application/json").post(ClientResponse.class, json);
+            if (response.getStatus() != 200) {
+                throw new RuntimeException("Failed : HTTP error code : "
+                        + response.getStatus());
+            }
+            return response.getEntity(String.class);
+        } finally {
+            if (null != response)
+               response.close();
         }
-        return response.getEntity(String.class);
     }
 
 }
