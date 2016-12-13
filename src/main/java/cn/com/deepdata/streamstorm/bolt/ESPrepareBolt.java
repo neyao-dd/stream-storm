@@ -67,9 +67,9 @@ public class ESPrepareBolt extends BaseRichBolt {
 			url = String.format("http://%s", esNodes);
 			RESTUtil.postRequest(url, name, esMapping);
 		}
-		createdIndexes.addLast(name);
+		createdIndexes.addFirst(name);
 		if (createdIndexes.size() > 50)
-			createdIndexes.removeFirst();
+			createdIndexes.removeLast();
 	}
 
 	@Override
