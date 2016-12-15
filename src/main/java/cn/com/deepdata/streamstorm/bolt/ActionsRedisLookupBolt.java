@@ -2,8 +2,6 @@ package cn.com.deepdata.streamstorm.bolt;
 
 import java.util.Map;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.storm.redis.bolt.AbstractRedisBolt;
 import org.apache.storm.redis.common.config.JedisClusterConfig;
 import org.apache.storm.redis.common.config.JedisPoolConfig;
@@ -44,13 +42,16 @@ public class ActionsRedisLookupBolt extends AbstractRedisBolt {
 	@Override
 	public void execute(Tuple input) {
 		String action = helper.getAction(input);
-
 		if (action == null || action.length() == 0) {
 			logger.error("no action:");
 			logger.error("doc:" + new Gson().toJson(helper.getDoc(input)));
 			helper.ack(input);
 			return;
 		}
+
+		if (action.equals("addCompanyInfo"))
+			logger.info("########Tuple in action look up bolt");
+
 		JedisCommands jedisCommands = null;
 		Action actionObj = null;
 		try {

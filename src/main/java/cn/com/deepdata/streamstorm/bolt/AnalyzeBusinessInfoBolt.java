@@ -3,6 +3,7 @@ package cn.com.deepdata.streamstorm.bolt;
 import clojure.lang.Obj;
 import cn.com.deepdata.commonutil.AnsjTermAnalyzer;
 import cn.com.deepdata.commonutil.interlayer.sha1value.GetSha1Value;
+import cn.com.deepdata.streamstorm.controller.Action;
 import cn.com.deepdata.streamstorm.entity.ChangeRecord;
 import cn.com.deepdata.streamstorm.entity.ChangedRisk;
 import cn.com.deepdata.streamstorm.entity.Company;
@@ -33,7 +34,7 @@ import java.util.*;
  * Created by yukh on 2016/10/31
  */
 public class AnalyzeBusinessInfoBolt extends AbstractRedisBolt {
-	private static final Logger logger = LoggerFactory.getLogger(BaseRichBolt.class);
+	private static final Logger logger = LoggerFactory.getLogger(AnalyzeBusinessInfoBolt.class);
 	private String BUSINESS_INDEX = "flume-company-info";
 	private String BUSINESS_CHANGE_INDEX = "flume-business-change";
 	private String COMMON_TYPE = "flumetype";
@@ -54,6 +55,11 @@ public class AnalyzeBusinessInfoBolt extends AbstractRedisBolt {
 	public void execute(Tuple tuple) {
 		Map<String, Object> source = helper.getDoc(tuple);
 		Map<String, Object> attach = helper.getAttach(tuple);
+		if (attach.containsKey("action")) {
+			Action actionObj = (Action) attach.get("action");
+			if (actionObj.name.equals("addCompanyInfo"))
+				logger.error("#####$$$$$$in business bolt");
+		}
 		try {
 			String name = getCompanyName(source);
 			if (!CommonUtil.validString(name)) {
@@ -61,7 +67,9 @@ public class AnalyzeBusinessInfoBolt extends AbstractRedisBolt {
 				logger.error("business info doesn't have a name, analyze error.");
 				return;
 			}
+			logger.info("##############Tuple:@{}@", tuple);
 			analyze(tuple, helper);
+			logger.info("##############Tuple:@{}@", tuple);
 			helper.emitDoc(tuple, source, true);
 			helper.ack(tuple);
 		} catch (Exception e) {

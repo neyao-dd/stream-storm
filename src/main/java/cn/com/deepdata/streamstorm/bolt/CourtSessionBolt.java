@@ -49,7 +49,7 @@ public class CourtSessionBolt extends BaseRichBolt {
         List<String> defendantCompany = new ArrayList<>();
         List<String> threePartPerson = new ArrayList<>();
         List<String> threePartCompany = new ArrayList<>();
-        String plaintiff = null, defendant = null;
+        String plaintiff = "", defendant = "";
         try{
             plaintiff = source.get("scc_plaintiff").toString();
             defendant = source.get("scc_defendant").toString();

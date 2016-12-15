@@ -33,6 +33,8 @@ public class SplitStreamBolt extends BaseRichBolt {
 		String streamId = "default";
 		if (attach.containsKey("action")) {
 			Action actionObj = (Action) attach.get("action");
+			if (actionObj.name.equals("addCompanyInfo"))
+				logger.error("#########Tuple: {}", helper.getDoc(input).toString());
 			streamId = actionObj.analyzeType.name();
 			helper.emit(input, true, streamId);
 		} else if (attach.containsKey("analyzeType")) {
