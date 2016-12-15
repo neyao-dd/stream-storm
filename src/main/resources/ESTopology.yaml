@@ -107,24 +107,27 @@ bolts:
       - "conf/indexConfig.json"
 
   - id: "es-bolt-month"
+    className: "cn.com.deepdata.streamstorm.bolt.EsMonthBolt"
+    constructorArgs:
+      - "{snp_index}/{snp_type}"
+      - ref: "esSaverConf"
+      - 5
+    parallelism: 1
+
+  - id: "es-bolt"
     className: "cn.com.deepdata.streamstorm.bolt.EsBolt"
     constructorArgs:
       - "{snp_index}/{snp_type}"
       - ref: "esSaverConf"
-    parallelism: 1
-
-  - id: "es-bolt"
-    className: "org.elasticsearch.storm.EsBolt"
-    constructorArgs:
-      - "{snp_index}/{snp_type}"
-      - ref: "esSaverConf"
+      - 5
     parallelism: 1
 
   - id: "es-upsert-bolt"
-    className: "org.elasticsearch.storm.EsBolt"
+    className: "cn.com.deepdata.streamstorm.bolt.EsBolt"
     constructorArgs:
       - "{snp_index}/{snp_type}"
       - ref: "esUpsertConf"
+      - 5
     parallelism: 1
     
   - id: "recalc-prepro"

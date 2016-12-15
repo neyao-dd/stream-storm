@@ -16,7 +16,7 @@ import org.apache.storm.kafka.ZkHosts;
 import org.apache.storm.spout.SchemeAsMultiScheme;
 import org.apache.storm.topology.TopologyBuilder;
 
-import cn.com.deepdata.streamstorm.bolt.EsBolt;
+import cn.com.deepdata.streamstorm.bolt.EsMonthBolt;
 import cn.com.deepdata.streamstorm.bolt.ParserBolt;
 
 @SuppressWarnings({ "rawtypes", "unchecked" })
@@ -44,11 +44,11 @@ public class ESTopology {
 		esConf.put("es.batch.size.bytes", "20mb");
 		esConf.put("es.storm.bolt.flush.entries.size", "50");
 		builder.setBolt("es-bolt-month",
-				new EsBolt("storm-test2/flumetype", esConf))
+				new EsMonthBolt("storm-test2/flumetype", esConf, 5))
 				.addConfiguration(Config.TOPOLOGY_TICK_TUPLE_FREQ_SECS,
 						tickTupleFreqSecs).shuffleGrouping("parser");
 		builder.setBolt("es-bolt",
-				new EsBolt("storm-test1/flumetype", esConf))
+				new EsMonthBolt("storm-test1/flumetype", esConf, 5))
 				.addConfiguration(Config.TOPOLOGY_TICK_TUPLE_FREQ_SECS,
 						tickTupleFreqSecs).shuffleGrouping("es-bolt-month");
 
