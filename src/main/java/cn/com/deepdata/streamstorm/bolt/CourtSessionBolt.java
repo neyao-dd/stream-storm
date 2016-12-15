@@ -49,8 +49,13 @@ public class CourtSessionBolt extends BaseRichBolt {
         List<String> defendantCompany = new ArrayList<>();
         List<String> threePartPerson = new ArrayList<>();
         List<String> threePartCompany = new ArrayList<>();
-        String plaintiff = source.get("scc_plaintiff").toString();
-        String defendant = source.get("scc_defendant").toString();
+        String plaintiff = null, defendant = null;
+        try{
+            plaintiff = source.get("scc_plaintiff").toString();
+            defendant = source.get("scc_defendant").toString();
+        } catch (Exception e) {
+            logger.error("analyze court session error, exception is {}, source is {}", e.toString(), source.toString());
+        }
         if (CommonUtil.validString(plaintiff)) {
             if (plaintiff.contains("第三人"))
                 plaintiff = findThreePart(plaintiff, threePartCompany, threePartPerson);
