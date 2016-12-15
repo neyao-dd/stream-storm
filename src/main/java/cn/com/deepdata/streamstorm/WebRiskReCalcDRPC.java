@@ -50,7 +50,7 @@ public class WebRiskReCalcDRPC {
 		builder.addBolt(new AnalyzeWebRiskBolt(jedisCfg), 5).shuffleGrouping();
 		builder.addBolt(new AnalyzeIndRegRiskBolt(jedisCfg), 5).shuffleGrouping();
 		//prepare
-//		builder.addBolt(new EsBolt( );
+//		builder.addBolt(new EsMonthBolt( );
 		builder.addBolt(new ReCalcDRPCResutlBolt(), 1).shuffleGrouping();
 
 		Config conf = new Config();
