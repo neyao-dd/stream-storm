@@ -18,21 +18,21 @@ import cn.com.deepdata.streamstorm.controller.ActionController;
 
 import com.google.gson.Gson;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import redis.clients.jedis.JedisCommands;
 
 @SuppressWarnings({ "serial", "rawtypes" })
 public class ActionsRedisLookupBolt extends AbstractRedisBolt {
-	private transient static Log log = LogFactory.getLog(DuplicateFilterBolt.class);
+	private static transient Logger logger = LoggerFactory.getLogger(ActionsRedisLookupBolt.class);
 	private transient DeepRichBoltHelper helper;
 
 	public ActionsRedisLookupBolt(JedisPoolConfig config) {
 		super(config);
-		// TODO Auto-generated constructor stub
 	}
 
 	public ActionsRedisLookupBolt(JedisClusterConfig config) {
 		super(config);
-		// TODO Auto-generated constructor stub
 	}
 
 	@Override
@@ -43,11 +43,11 @@ public class ActionsRedisLookupBolt extends AbstractRedisBolt {
 
 	@Override
 	public void execute(Tuple input) {
-		// TODO Auto-generated method stub
 		String action = helper.getAction(input);
+
 		if (action == null || action.length() == 0) {
-			log.error("no action:");
-			log.error("doc:" + new Gson().toJson(helper.getDoc(input)));
+			logger.error("no action:");
+			logger.error("doc:" + new Gson().toJson(helper.getDoc(input)));
 			helper.ack(input);
 			return;
 		}
@@ -62,7 +62,7 @@ public class ActionsRedisLookupBolt extends AbstractRedisBolt {
 			} else if (ActionController.actions.containsKey(action)) {
 				actionObj = ActionController.actions.get(action);
 			} else {
-				log.error("unknown action:" + action);
+				logger.error("unknown action:" + action);
 			}
 		} finally {
 			if (jedisCommands != null) {
@@ -74,15 +74,14 @@ public class ActionsRedisLookupBolt extends AbstractRedisBolt {
 			attach.put("action", actionObj);
 			helper.emitAttach(input, attach, true);
 		} else {
-			log.error("unknown action:" + action);
-			log.error("doc:" + new Gson().toJson(helper.getDoc(input)));
+			logger.error("unknown action:" + action);
+			logger.error("doc:" + new Gson().toJson(helper.getDoc(input)));
 		}
 		helper.ack(input);
 	}
 
 	@Override
 	public void declareOutputFields(OutputFieldsDeclarer declarer) {
-		// TODO Auto-generated method stub
 		declarer.declare(new Fields(DeepRichBoltHelper.fields));
 	}
 
