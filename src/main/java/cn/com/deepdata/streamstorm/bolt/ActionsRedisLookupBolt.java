@@ -48,10 +48,6 @@ public class ActionsRedisLookupBolt extends AbstractRedisBolt {
 			helper.ack(input);
 			return;
 		}
-
-		if (action.equals("addCompanyInfo"))
-			logger.info("########Tuple in action look up bolt");
-
 		JedisCommands jedisCommands = null;
 		Action actionObj = null;
 		try {

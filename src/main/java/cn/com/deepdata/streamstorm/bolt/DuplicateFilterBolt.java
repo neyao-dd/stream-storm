@@ -35,7 +35,6 @@ public class DuplicateFilterBolt extends BaseRichBolt {
 	private transient int total;
 
 	public DuplicateFilterBolt(JedisPoolConfig config) {
-		// TODO Auto-generated constructor stub
 		this.jedisPoolConfig = config;
 	}
 
@@ -50,7 +49,6 @@ public class DuplicateFilterBolt extends BaseRichBolt {
 
 	@Override
 	public void execute(Tuple input) {
-		// TODO Auto-generated method stub
 		EDeDupType deDupType = EDeDupType.ByUrl;
 		Map<String, Object> doc = helper.getDoc(input);
 		Map<String, Object> attach = helper.getAttach(input);

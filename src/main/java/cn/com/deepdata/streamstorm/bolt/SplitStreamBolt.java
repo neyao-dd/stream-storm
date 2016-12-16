@@ -21,20 +21,16 @@ public class SplitStreamBolt extends BaseRichBolt {
 
 	@Override
 	public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
-		// TODO Auto-generated method stub
 		helper = new DeepRichBoltHelper(collector);
 	}
 
 	@Override
 	public void execute(Tuple input) {
-		// TODO Auto-generated method stub
 		Map<String, Object> attach = helper.getAttach(input);
 
-		String streamId = "default";
+		String streamId;
 		if (attach.containsKey("action")) {
 			Action actionObj = (Action) attach.get("action");
-			if (actionObj.name.equals("addCompanyInfo"))
-				logger.error("#########Tuple: {}", helper.getDoc(input).toString());
 			streamId = actionObj.analyzeType.name();
 			helper.emit(input, true, streamId);
 		} else if (attach.containsKey("analyzeType")) {
@@ -46,7 +42,6 @@ public class SplitStreamBolt extends BaseRichBolt {
 
 	@Override
 	public void declareOutputFields(OutputFieldsDeclarer declarer) {
-		// TODO Auto-generated method stub
 		Arrays.asList(EAnalyzeType.values()).stream().forEach(type -> declarer.declareStream(type.name(), new Fields(DeepRichBoltHelper.fields)));
 	}
 

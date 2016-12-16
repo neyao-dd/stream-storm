@@ -35,13 +35,11 @@ public class ESLookUpBolt extends BaseRichBolt {
 
 	@Override
 	public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
-		// TODO Auto-generated method stub
 		_collector = collector;
 	}
 
 	@Override
 	public void execute(Tuple input) {
-		// TODO Auto-generated method stub
 		Gson gson = new Gson();
 		Type listType = new TypeToken<List<String>>() {
 		}.getType();
@@ -71,7 +69,6 @@ public class ESLookUpBolt extends BaseRichBolt {
 
 	@Override
 	public void declareOutputFields(OutputFieldsDeclarer declarer) {
-		// TODO Auto-generated method stub
 		declarer.declare(new Fields("doc"));
 	}
 

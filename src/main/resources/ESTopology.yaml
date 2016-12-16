@@ -36,6 +36,8 @@ bolts:
     constructorArgs:
       - "${radar.server}"
       - "api/v1/task/finish_content"
+      # 雷达任务确认的发送数量，0不发送
+      - 0
     parallelism: 4
     
   - id: "action-lookup"

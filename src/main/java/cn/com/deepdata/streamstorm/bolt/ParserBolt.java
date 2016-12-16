@@ -27,11 +27,13 @@ public class ParserBolt extends BaseRichBolt {
 	private transient List<Integer> taskIds;
 	private String radarHost;
 	private String taskIdPath;
+	private int postSize;
 	private transient SimpleDateFormat format;
 
-	public ParserBolt(String host, String path) {
+	public ParserBolt(String host, String path, int postSize) {
 		radarHost = host;
 		taskIdPath = path;
+		this.postSize = postSize;
 	}
 
 	public void prepare(Map stormConf, TopologyContext context,
@@ -120,9 +122,10 @@ public class ParserBolt extends BaseRichBolt {
 		if (value == null)
 			return null;
 		if (String.class.isInstance(value)) {
-			if (value.toString().length() == 0)
+			String sValue = value.toString().trim();
+			if (sValue.length() == 0)
 				return 0;
-			return parseNumber(type, Double.parseDouble(value.toString()));
+			return parseNumber(type, Double.parseDouble(sValue));
 		} else if (Number.class.isInstance(value))
 			return parseNumber(type, (Number) value);
 		return 0;
@@ -154,17 +157,19 @@ public class ParserBolt extends BaseRichBolt {
 				return;
 			}
 			String action = doc.get("action").toString();
-
-			if (action.equals("addCompanyInfo"))
-				logger.info("########Tuple in parser bolt.");
-
 			doc.remove("action");
 			doc.remove("inp_radar_id");
 			if (action.equals("addContents") && doc.containsKey("inp_task_id")) {
-				taskIds.add((int) (double) Double.parseDouble(doc.get("inp_task_id").toString()));
-				if (taskIds.size() >= 30) {
-					postRadar(taskIds);
-					taskIds.clear();
+				if (post()) {
+					taskIds.add((int) (double) Double.parseDouble(doc.get("inp_task_id").toString()));
+					if (taskIds.size() >= postSize) {
+						try {
+							postRadar(taskIds);
+							taskIds.clear();
+						} catch (Exception e) {
+							logger.warn("post ids to radar error, {}", e.toString());
+						}
+					}
 				}
 			}
 			doc.remove("inp_task_id");
@@ -176,7 +181,7 @@ public class ParserBolt extends BaseRichBolt {
 					if (newValue != null)
 						newDoc.put(k, newValue);
 				} catch (JsonSyntaxException e) {
-					logger.error("Json parse fail");
+					logger.error("parse json filed fail");
 					logger.error(k + ":" + doc.get(k));
 				}
 			});
@@ -208,9 +213,13 @@ public class ParserBolt extends BaseRichBolt {
 		}
 	}
 
+	private boolean post() {
+		return postSize > 0;
+	}
+
 	@Override
 	public void cleanup() {
-		if (!taskIds.isEmpty()) {
+		if (!taskIds.isEmpty() && post()) {
 			postRadar(taskIds);
 		}
 	}

@@ -55,11 +55,6 @@ public class AnalyzeBusinessInfoBolt extends AbstractRedisBolt {
 	public void execute(Tuple tuple) {
 		Map<String, Object> source = helper.getDoc(tuple);
 		Map<String, Object> attach = helper.getAttach(tuple);
-		if (attach.containsKey("action")) {
-			Action actionObj = (Action) attach.get("action");
-			if (actionObj.name.equals("addCompanyInfo"))
-				logger.error("#####$$$$$$in business bolt");
-		}
 		try {
 			String name = getCompanyName(source);
 			if (!CommonUtil.validString(name)) {
@@ -67,9 +62,7 @@ public class AnalyzeBusinessInfoBolt extends AbstractRedisBolt {
 				logger.error("business info doesn't have a name, analyze error.");
 				return;
 			}
-			logger.info("##############Tuple:@{}@", tuple);
 			analyze(tuple, helper);
-			logger.info("##############Tuple:@{}@", tuple);
 			helper.emitDoc(tuple, source, true);
 			helper.ack(tuple);
 		} catch (Exception e) {

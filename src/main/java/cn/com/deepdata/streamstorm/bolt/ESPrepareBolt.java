@@ -106,10 +106,6 @@ public class ESPrepareBolt extends BaseRichBolt {
 			if (indexName.endsWith("-"))
 				indexName = indexName.substring(0, indexName.length() - 1);
 			indexNameComponents.add(indexName);
-
-			if (actionObj.name.equals("addCompanyInfo"))
-				logger.info("########Tuple in prepare bolt, source: {}", source.toString());
-
 			if (actionObj.name.equals("addContents")) {
 				int info_type = (int) source.get("inp_type");
 				switch (info_type) {
