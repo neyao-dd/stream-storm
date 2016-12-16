@@ -3,6 +3,7 @@ package cn.com.deepdata.streamstorm.bolt;
 import clojure.lang.Obj;
 import cn.com.deepdata.commonutil.AnsjTermAnalyzer;
 import cn.com.deepdata.commonutil.interlayer.sha1value.GetSha1Value;
+import cn.com.deepdata.streamstorm.controller.Action;
 import cn.com.deepdata.streamstorm.entity.ChangeRecord;
 import cn.com.deepdata.streamstorm.entity.ChangedRisk;
 import cn.com.deepdata.streamstorm.entity.Company;
@@ -33,7 +34,7 @@ import java.util.*;
  * Created by yukh on 2016/10/31
  */
 public class AnalyzeBusinessInfoBolt extends AbstractRedisBolt {
-	private static final Logger logger = LoggerFactory.getLogger(BaseRichBolt.class);
+	private static final Logger logger = LoggerFactory.getLogger(AnalyzeBusinessInfoBolt.class);
 	private String BUSINESS_INDEX = "flume-company-info";
 	private String BUSINESS_CHANGE_INDEX = "flume-business-change";
 	private String COMMON_TYPE = "flumetype";

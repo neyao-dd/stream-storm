@@ -1,11 +1,11 @@
 package cn.com.deepdata.streamstorm.bolt;
 
-import java.lang.reflect.Type;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
 import cn.com.deepdata.streamstorm.util.CommonUtil;
 import cn.com.deepdata.streamstorm.util.RESTUtil;
+import cn.com.deepdata.streamstorm.util.TypeProvider;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -17,7 +17,6 @@ import com.google.common.collect.Maps;
 import com.google.gson.Gson;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonSyntaxException;
-import com.google.gson.reflect.TypeToken;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,18 +27,17 @@ public class ParserBolt extends BaseRichBolt {
 	private transient List<Integer> taskIds;
 	private String radarHost;
 	private String taskIdPath;
-	private final Type mapType = new TypeToken<Map<String, String>>() {
-	}.getType();
+	private int postSize;
 	private transient SimpleDateFormat format;
 
-	public ParserBolt(String host, String path) {
+	public ParserBolt(String host, String path, int postSize) {
 		radarHost = host;
 		taskIdPath = path;
+		this.postSize = postSize;
 	}
 
 	public void prepare(Map stormConf, TopologyContext context,
 			OutputCollector collector) {
-		// TODO Auto-generated method stub
 		helper = new DeepRichBoltHelper(collector);
 		taskIds = new ArrayList<>();
 		format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -50,7 +48,7 @@ public class ParserBolt extends BaseRichBolt {
 			return false;
 
 		try {
-			Date date = (Date) format.parse(str);
+			Date date = format.parse(str);
 			return str.equals(format.format(date));
 		} catch (Exception e) {
 			logger.error("Not Valid");
@@ -96,35 +94,58 @@ public class ParserBolt extends BaseRichBolt {
 		return doc;
 	}
 
-	private Object parseValue(String key, String value)
+	private Object parseValue(String key, Object value)
 			throws JsonSyntaxException {
 		Gson gson = new Gson();
-		if (key.startsWith("n")) {
-			Map[] arrayValue = null;
-			arrayValue = gson.fromJson(value, Map[].class);
+		if (key.startsWith("n") && String.class.isInstance(value)) {
+			Map[] arrayValue = gson.fromJson(value.toString(), Map[].class);
 			return Arrays.asList(arrayValue);
-		} else if (key.startsWith("a")) {
-			String[] arrayValue = null;
-			arrayValue = gson.fromJson(value, String[].class);
+		} else if (key.startsWith("a") && String.class.isInstance(value)) {
+			String[] arrayValue = gson.fromJson(value.toString(), String[].class);
 			return Arrays.asList(arrayValue);
-		} else if (key.startsWith("o")) {
-			Map objectValue = null;
-			objectValue = gson.fromJson(value, Map.class);
-			return objectValue;
+		} else if (key.startsWith("o") && String.class.isInstance(value)) {
+			return gson.fromJson(value.toString(), Map.class);
 		} else if (key.startsWith("sn")) {
-			return value.trim();
+			return value.toString().trim();
+		} else if (key.startsWith("l")) {
+			return getNumber(long.class, value);
+		} else if (key.startsWith("i")) {
+			return getNumber(int.class, value);
+		} else if (key.startsWith("d")) {
+			return getNumber(double.class, value);
 		} else {
 			return value;
 		}
 	}
 
+	private <T extends Number> Number getNumber(Class<T> type, Object value) {
+		if (value == null)
+			return null;
+		if (String.class.isInstance(value)) {
+			String sValue = value.toString().trim();
+			if (sValue.length() == 0)
+				return 0;
+			return parseNumber(type, Double.parseDouble(sValue));
+		} else if (Number.class.isInstance(value))
+			return parseNumber(type, (Number) value);
+		return 0;
+	}
+
+	private <T extends Number> Number parseNumber(Class<T> type, Number number) {
+		if (type.equals(int.class))
+			return number.intValue();
+		else if (type.equals(long.class))
+			return number.longValue();
+		else
+			return number;
+	}
+
 	@Override
 	public void execute(Tuple input) {
-		// TODO Auto-generated method stub
 		String json = input.getString(0);
 		Gson gson = new Gson();
 		try {
-			Map<String, String> doc = gson.fromJson(json, mapType);
+			Map<String, Object> doc = gson.fromJson(json, TypeProvider.type_mso);
 			Map<String, Object> newDoc = Maps.newHashMap();
 			if (doc == null) {
 				throw new JsonParseException("parse return null");
@@ -135,26 +156,32 @@ public class ParserBolt extends BaseRichBolt {
 				helper.ack(input);
 				return;
 			}
-			String action = doc.get("action");
+			String action = doc.get("action").toString();
 			doc.remove("action");
 			doc.remove("inp_radar_id");
 			if (action.equals("addContents") && doc.containsKey("inp_task_id")) {
-				taskIds.add((int) (double) Double.parseDouble(doc.get("inp_task_id")));
-				if (taskIds.size() >= 30) {
-					postRadar(taskIds);
-					taskIds.clear();
+				if (post()) {
+					taskIds.add((int) (double) Double.parseDouble(doc.get("inp_task_id").toString()));
+					if (taskIds.size() >= postSize) {
+						try {
+							postRadar(taskIds);
+							taskIds.clear();
+						} catch (Exception e) {
+							logger.warn("post ids to radar error, {}", e.toString());
+						}
+					}
 				}
 			}
 			doc.remove("inp_task_id");
-			doc.keySet().stream().filter(k -> {
-				return k.indexOf("_") >= 0;
-			}).forEach(k -> {
+			doc.keySet().stream().filter(k ->
+				k.contains("_")
+			).forEach(k -> {
 				try {
 					Object newValue = parseValue(k, doc.get(k));
 					if (newValue != null)
 						newDoc.put(k, newValue);
 				} catch (JsonSyntaxException e) {
-					logger.error("Json parse fail");
+					logger.error("parse json filed fail");
 					logger.error(k + ":" + doc.get(k));
 				}
 			});
@@ -170,7 +197,6 @@ public class ParserBolt extends BaseRichBolt {
 
 	@Override
 	public void declareOutputFields(OutputFieldsDeclarer declarer) {
-		// TODO Auto-generated method stub
 		declarer.declare(new Fields(DeepRichBoltHelper.fields));
 	}
 
@@ -187,9 +213,13 @@ public class ParserBolt extends BaseRichBolt {
 		}
 	}
 
+	private boolean post() {
+		return postSize > 0;
+	}
+
 	@Override
 	public void cleanup() {
-		if (!taskIds.isEmpty()) {
+		if (!taskIds.isEmpty() && post()) {
 			postRadar(taskIds);
 		}
 	}

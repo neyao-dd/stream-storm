@@ -45,7 +45,6 @@ public class ESPrepareBolt extends BaseRichBolt {
 
 	@Override
 	public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
-		// TODO Auto-generated method stub
 		_collector = collector;
 		helper = new DeepRichBoltHelper(collector);
 		objectMapper = new ObjectMapper();
@@ -56,7 +55,7 @@ public class ESPrepareBolt extends BaseRichBolt {
 		if (createdIndexes.contains(name))
 			return;
 		String url = String.format("http://%s/%s", esNodes, name);
-		Boolean exist = false;
+		Boolean exist;
 		try {
 			RESTUtil.getRequest(url);
 			exist = true;
@@ -79,7 +78,6 @@ public class ESPrepareBolt extends BaseRichBolt {
 
 	@Override
 	public void execute(Tuple input) {
-		// TODO Auto-generated method stub
 		Map<String, Object> source = helper.getDoc(input);
 		Map<String, Object> attach = helper.getAttach(input);
 		Action actionObj = (Action) attach.get("action");
@@ -109,21 +107,21 @@ public class ESPrepareBolt extends BaseRichBolt {
 				indexName = indexName.substring(0, indexName.length() - 1);
 			indexNameComponents.add(indexName);
 			if (actionObj.name.equals("addContents")) {
-				String info_type = (String) source.get("inp_type");
+				int info_type = (int) source.get("inp_type");
 				switch (info_type) {
-					case "1":
+					case 1:
 						indexNameComponents.add("news");
 						break;
-					case "2":
+					case 2:
 						indexNameComponents.add("weibo");
 						break;
-					case "3":
+					case 3:
 						indexNameComponents.add("weixin");
 						break;
-					case "4":
+					case 4:
 						indexNameComponents.add("forum");
 						break;
-					case "5":
+					case 5:
 						indexNameComponents.add("tieba");
 						break;
 				}
@@ -140,11 +138,9 @@ public class ESPrepareBolt extends BaseRichBolt {
 			else
 				_collector.emit(values);
 		} catch (JsonProcessingException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 			logger.error("JsonProcessingException", e);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 			logger.error("IOException", e);
 		}
@@ -153,7 +149,6 @@ public class ESPrepareBolt extends BaseRichBolt {
 
 	@Override
 	public void declareOutputFields(OutputFieldsDeclarer declarer) {
-		// TODO Auto-generated method stub
 		declarer.declareStream(upsertStream, new Fields("json"));
 		declarer.declareStream(monthStream, new Fields("json"));
 		declarer.declare(new Fields("json"));
