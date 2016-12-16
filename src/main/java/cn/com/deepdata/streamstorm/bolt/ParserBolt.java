@@ -106,18 +106,35 @@ public class ParserBolt extends BaseRichBolt {
 		} else if (key.startsWith("sn")) {
 			return value.toString().trim();
 		} else if (key.startsWith("l")) {
-			if (String.class.isInstance(value))
-				return Long.parseLong(value.toString());
-			return (long) (double) value;
+			return getNumber(long.class, value);
 		} else if (key.startsWith("i")) {
-			if (String.class.isInstance(value))
-				return Integer.parseInt(value.toString());
-			return (int) (double) value;
-		} else if (key.startsWith("d") && String.class.isInstance(value)) {
-				return Double.parseDouble(value.toString());
+			return getNumber(int.class, value);
+		} else if (key.startsWith("d")) {
+			return getNumber(double.class, value);
 		} else {
 			return value;
 		}
+	}
+
+	private <T extends Number> Number getNumber(Class<T> type, Object value) {
+		if (value == null)
+			return null;
+		if (String.class.isInstance(value)) {
+			if (value.toString().length() == 0)
+				return 0;
+			return parseNumber(type, Double.parseDouble(value.toString()));
+		} else if (Number.class.isInstance(value))
+			return parseNumber(type, (Number) value);
+		return 0;
+	}
+
+	private <T extends Number> Number parseNumber(Class<T> type, Number number) {
+		if (type.equals(int.class))
+			return number.intValue();
+		else if (type.equals(long.class))
+			return number.longValue();
+		else
+			return number;
 	}
 
 	@Override
