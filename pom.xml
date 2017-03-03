@@ -17,7 +17,7 @@
 		<repository>
 			<id>nexus-deepdata</id>
 			<name>deepdata artifacts</name>
-			<url>http://nexus.deepdata.cc/nexus/content/repositories/snapshots/</url>
+			<url>http://nexus.deepdata.com.cn/nexus/content/repositories/snapshots/</url>
 		</repository>
 		<repository>
 			<id>central</id>
