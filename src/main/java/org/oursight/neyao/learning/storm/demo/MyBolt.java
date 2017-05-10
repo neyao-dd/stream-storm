@@ -29,6 +29,7 @@ public class MyBolt extends BaseRichBolt {
 
     @Override
     public void execute(Tuple input) {
+        //input.get
         logger.info("MyBolt.execute, input Tuple: " + input );
         collector.emit(new Values(input.getString(0) +"!!!"));
         collector.ack(input);

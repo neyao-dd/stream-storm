@@ -1,18 +1,16 @@
 package org.oursight.neyao.learning.storm.demo;
 
 import org.apache.storm.Config;
-import org.apache.storm.LocalCluster;
 import org.apache.storm.StormSubmitter;
 import org.apache.storm.generated.AlreadyAliveException;
 import org.apache.storm.generated.AuthorizationException;
 import org.apache.storm.generated.InvalidTopologyException;
 import org.apache.storm.topology.TopologyBuilder;
-import org.apache.storm.utils.Utils;
 
 /**
  * Created by neyao on 2017/3/3.
  */
-public class MyTopology {
+public class MyClusterTopology {
 
     public static void main(String[] args) throws InvalidTopologyException, AuthorizationException, AlreadyAliveException {
         TopologyBuilder builder = new TopologyBuilder();
@@ -28,17 +26,17 @@ public class MyTopology {
 
 
         // Run as local
-        conf.setDebug(true);
-        String topologyName = "my-test-local-topo";
-        LocalCluster cluster = new LocalCluster();
-        cluster.submitTopology(topologyName, conf, builder.createTopology());
-        Utils.sleep(10000); //KILL the topology
-        cluster.killTopology(topologyName);
-        cluster.shutdown();
+//        conf.setDebug(true);
+//        String topologyName = "my-test-local-topo";
+//        LocalCluster cluster = new LocalCluster();
+//        cluster.submitTopology(topologyName, conf, builder.createTopology());
+//        Utils.sleep(10000); //KILL the topology
+//        cluster.killTopology(topologyName);
+//        cluster.shutdown();
 
         // Run as cluster
-//        String topologyName = args[0];
-//        StormSubmitter.submitTopology(topologyName, conf, builder.createTopology());
+        String topologyName = args[0];
+        StormSubmitter.submitTopology(topologyName, conf, builder.createTopology());
 
 
 
