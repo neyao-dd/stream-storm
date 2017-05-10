@@ -12,7 +12,7 @@ import org.apache.storm.utils.Utils;
 /**
  * Created by neyao on 2017/3/3.
  */
-public class MyTopology {
+public class MyLocalTopology {
 
     public static void main(String[] args) throws InvalidTopologyException, AuthorizationException, AlreadyAliveException {
         TopologyBuilder builder = new TopologyBuilder();
