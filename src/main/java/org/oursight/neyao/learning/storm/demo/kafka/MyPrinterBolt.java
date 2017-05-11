@@ -30,19 +30,15 @@ public class MyPrinterBolt extends BaseBasicBolt {
 	private static Log logger = LogFactory.getLog(MyPrinterBolt.class);
 
 	public void execute(Tuple tuple, BasicOutputCollector collector) {
-
-		System.out.println();
-		System.out.println();
-		System.out.println("--------------------------");
-		System.out.println("tuple: " + tuple);
-
+		logger.info("");
+		logger.info("");
+		logger.info("");
 		logger.info("============================================");
-		logger.info("tuple: " + tuple);
 		logger.info(tuple);
-		System.out.println("--------------------------");
 		logger.info("============================================");
-		System.out.println();
-		System.out.println();
+		logger.info("");
+		logger.info("");
+		logger.info("");
 	}
 
 	public void declareOutputFields(OutputFieldsDeclarer ofd) {

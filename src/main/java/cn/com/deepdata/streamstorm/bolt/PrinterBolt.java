@@ -17,6 +17,7 @@
  */
 package cn.com.deepdata.streamstorm.bolt;
 
+import cn.com.deepdata.streamstorm.util.LogUtil;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.storm.topology.BasicOutputCollector;
@@ -27,10 +28,18 @@ import org.apache.storm.tuple.Tuple;
 @SuppressWarnings("serial")
 public class PrinterBolt extends BaseBasicBolt {
 
-	private static Log log = LogFactory.getLog(PrinterBolt.class);
+	private static Log logger = LogFactory.getLog(PrinterBolt.class);
 
 	public void execute(Tuple tuple, BasicOutputCollector collector) {
-		log.info(tuple);
+		logger.info("");
+		logger.info("");
+		logger.info("");
+		logger.info("============================================");
+		logger.info("PrinterBolt:" + LogUtil.logString(tuple));
+		logger.info("============================================");
+		logger.info("");
+		logger.info("");
+		logger.info("");
 	}
 
 	public void declareOutputFields(OutputFieldsDeclarer ofd) {
