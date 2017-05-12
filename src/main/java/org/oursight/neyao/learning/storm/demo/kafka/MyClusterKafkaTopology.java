@@ -1,5 +1,6 @@
 package org.oursight.neyao.learning.storm.demo.kafka;
 
+import cn.com.deepdata.streamstorm.bolt.ParserBolt;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.storm.Config;
@@ -43,13 +44,13 @@ public class MyClusterKafkaTopology {
         KafkaSpout kafkaSpout = new KafkaSpout(spoutConfig);
 
         builder.setSpout("kafka", kafkaSpout, 1);
-//        builder.setBolt("parser", new ParserBolt("http://192.168.1.208:5160", "api/v1/task/finish_content", 0), 4).shuffleGrouping("kafka");
-        builder.setBolt("printer", new MyPrinterBolt()).shuffleGrouping("kafka");
+        builder.setBolt("parser", new ParserBolt("http://192.168.1.208:5160", "api/v1/task/finish_content", 0), 4).shuffleGrouping("kafka");
+        builder.setBolt("printer-after-parser", new MyPrinterBolt()).shuffleGrouping("parser");
+        builder.setBolt("printer-from-kafka", new MyPrinterBolt()).shuffleGrouping("kafka");
 
         Config conf = new Config();
         conf.setDebug(false);
-
-        conf.setNumWorkers(3);
+        conf.setNumWorkers(1);
 
         try {
 
