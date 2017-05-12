@@ -44,7 +44,7 @@ public class MyClusterKafkaTopology {
         KafkaSpout kafkaSpout = new KafkaSpout(spoutConfig);
 
         builder.setSpout("kafka", kafkaSpout, 1);
-        builder.setBolt("parser", new ParserBolt("http://192.168.1.208:5160", "api/v1/task/finish_content", 0), 4).shuffleGrouping("kafka");
+        builder.setBolt("parser", new ParserBolt("http://192.168.1.208:5160", "api/v1/task/finish_content", 0), 1).shuffleGrouping("kafka");
         builder.setBolt("printer-after-parser", new MyPrinterBolt()).shuffleGrouping("parser");
         builder.setBolt("printer-from-kafka", new MyPrinterBolt()).shuffleGrouping("kafka");
 
@@ -59,8 +59,8 @@ public class MyClusterKafkaTopology {
             System.out.println("--------------------------");
             System.out.println("will submit to storm");
 
-            logger.error("============================================");
-            logger.error("WILL SUBMIT TO STORM");
+            logger.info("============================================");
+            logger.info("WILL SUBMIT TO STORM");
 
 
             StormSubmitter.submitTopologyWithProgressBar(args[0], conf, builder.createTopology());
@@ -71,8 +71,8 @@ public class MyClusterKafkaTopology {
 //        cluster.submitTopology(topologyName, conf, builder.createTopology());
 
             System.out.println("submit to storm done");
-            logger.error("SUBMIT TO STORM DONE");
-            logger.error("============================================");
+            logger.info("SUBMIT TO STORM DONE");
+            logger.info("============================================");
             System.out.println("--------------------------");
             System.out.println();
             System.out.println();
